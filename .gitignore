@@ -59,6 +59,7 @@ forth/mal.fs
 fsharp/*.exe
 fsharp/*.dll
 fsharp/*.mdb
+gblrust/target/
 go/step*
 groovy/*.class
 groovy/mal.jar
