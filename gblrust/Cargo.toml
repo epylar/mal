@@ -1,0 +1,13 @@
+[package]
+name = "mal"
+version = "0.1.0"
+authors = ["Gavin Lewis <epylar@gmail.com>"]
+
+[dependencies]
+libc = "0.1"
+<<<<<<< HEAD
+regex = "*"
+=======
+regex = "*"
+clippy = "*"
+>>>>>>> origin/master
