@@ -1,10 +1,12 @@
 extern crate mal;
+extern crate rustyline;
 use mal::types::MalType::*;
 use mal::types::MalVal;
 use mal::reader;
 use std::rc::Rc;
 use std::collections::HashMap;
 use mal::types::MalRet;
+use rustyline::Editor;
 
 macro_rules! hashmap {
     ($( $key: expr => $val: expr ),*) => {{
@@ -153,10 +155,12 @@ fn rep(a: &str) -> Result<String, String> {
 }
 
 fn main() {
+    let mut rl = Editor::<()>::new();
     loop {
-        let input = match mal::readline::readline("user> ") {
-            Some(input) => input,
-            None => {
+        let readline = rl.readline("user> ");
+        let input = match readline {
+            Ok(input) => input,
+            Err(y) => {
                 println!("");
                 break;
             }

@@ -1,6 +1,8 @@
 extern crate mal;
+extern crate rustyline;
 use mal::types::MalType;
 use mal::reader;
+use rustyline::Editor;
 
 fn read(a: &str) -> Result<MalType, String> {
     reader::read_str(a)
@@ -24,11 +26,13 @@ fn rep(a: &str) -> Result<String, String> {
 }
 
 fn main() {
+    let mut rl = Editor::<()>::new();
     loop {
-        let input = match mal::readline::readline("user> ") {
-            Some(input) => input,
-            None => {
-                println!("");
+        let readline = rl.readline("user> ");
+        let input = match readline {
+            Ok(input) => input,
+            Err(y) => {
+                println!();
                 break;
             },
         };

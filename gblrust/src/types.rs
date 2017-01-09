@@ -13,30 +13,6 @@ pub enum MalType {
     Quote(MalVal),
     Quasiquote(MalVal),
     Unquote(MalVal),
-<<<<<<< HEAD
-    Spliceunquote(MalVal)
-}   
-pub type MalVal = Rc<MalType>;   
-    
-impl MalType {
-    pub fn pr_str(&self) -> String {
-        // This file will contain a single function pr_str which does the opposite of read_str: 
-        // take a mal data structure and return a string representation of it. But pr_str is much 
-        // simpler and is basically just a switch statement on the type of the input object.
-        match *self {
-            MalType::Nil => "nil".to_string(),
-            MalType::True => "true".to_string(),
-            MalType::False => "false".to_string(),
-            MalType::MString(ref s) => format!("\"{}\"", s),
-            MalType::List(ref l) => {
-                self.pr_delimited(&l, "(", ")")
-            },
-            MalType::Vector(ref a) => {
-                self.pr_delimited(&a, "[", "]")
-            }
-            MalType::Integer(ref x) => x.to_string(),
-            MalType::Symbol(ref s) => format!("{}", s),
-=======
     Spliceunquote(MalVal),
     Func(fn(Vec<MalVal>) -> MalRet),
 }
@@ -59,17 +35,10 @@ impl MalType {
             MalType::Vector(ref a) => self.pr_delimited(&a, "[", "]"),
             MalType::Integer(ref x) => x.to_string(),
             MalType::Symbol(ref s) => s.to_owned(),
->>>>>>> origin/master
             MalType::Quote(ref s) => format!("(quote {})", s.pr_str()),
             MalType::Quasiquote(ref s) => format!("(quasiquote {})", s.pr_str()),
             MalType::Unquote(ref s) => format!("(unquote {})", s.pr_str()),
             MalType::Spliceunquote(ref s) => format!("(splice-unquote {})", s.pr_str()),
-<<<<<<< HEAD
-        }
-    }
-    
-    fn pr_delimited(&self, v: &Vec<MalVal>, left_delim: &str, right_delim: &str) -> String {
-=======
             MalType::Func(_) => "<function ...>".to_owned()
         }
     }
@@ -85,7 +54,6 @@ impl MalType {
     }
 
     fn pr_delimited(&self, v: &[MalVal], left_delim: &str, right_delim: &str) -> String {
->>>>>>> origin/master
         let mut result: String = String::new();
         result.push_str(&left_delim);
         let mut first: bool = true;
@@ -93,21 +61,6 @@ impl MalType {
             if !first {
                 result.push_str(" ");
             }
-<<<<<<< HEAD
-            result.push_str(&s.pr_str());        
-            first = false;
-        }    
-        result.push_str(&right_delim);
-        result
-    }
-}      
-
-#[cfg(test)]
-mod tests {
-    use std::rc::Rc;
-    use super::MalType::*;
-    
-=======
             result.push_str(&s.pr_str());
             first = false;
         }
@@ -121,23 +74,14 @@ mod tests {
     use super::MalType::*;
     use std::rc::Rc;
 
->>>>>>> origin/master
     #[test]
     fn pr_str_works() {
         assert_eq!("nil", Nil.pr_str());
         assert_eq!("true", True.pr_str());
         assert_eq!("false", False.pr_str());
-<<<<<<< HEAD
-        assert_eq!("(nil true)", List(vec![Rc::new(Nil), Rc::new(True)]).pr_str());
-        let result = List(vec![Rc::new(Nil), Rc::new(Integer(42))]).pr_str();
-        assert_eq!("(nil 42)", result)
-    }
-}
-=======
         assert_eq!("(nil true)",
                    List(vec![Rc::new(Nil), Rc::new(True)]).pr_str());
         let result = List(vec![Rc::new(Nil), Rc::new(Integer(42))]).pr_str();
         assert_eq!("(nil 42)", result)
     }
 }
->>>>>>> origin/master

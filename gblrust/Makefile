@@ -1,29 +1,23 @@
 #####################
 
-SOURCES_BASE = src/main.rs src/types.rs src/readline.rs \
-	       src/reader.rs # src/printer.rs \
-	       # src/env.rs src/core.rs
-SOURCES_LISP = src/bin/step2_eval.rs # src/env.rs src/core.rs src/bin/stepA_mal.rs
+SOURCES_BASE = src/types.rs src/readline.rs \
+	       src/reader.rs \
+	       src/lib.rs
+SOURCES_LISP = src/bin/step2_eval.rs
 SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
 #####################
 
-SRCS = step0_repl.rs step1_read_print.rs step2_eval.rs # step3_env.rs \
-       #step4_if_fn_do.rs step5_tco.rs step6_file.rs step7_quote.rs \
-       #step8_macros.rs step9_try.rs stepA_mal.rs
+SRCS = step0_repl.rs step1_read_print.rs step2_eval.rs
 BINS = $(SRCS:%.rs=target/release/%)
 
 #####################
 
-<<<<<<< HEAD
-all: mal
-=======
 all: $(BINS)
->>>>>>> origin/master
 
 dist: mal
 
-mal: target/release/stepA_mal
+mal: target/release/step2_eval
 	cp $< $@
 
 # TODO: would be nice to build just the step requested
