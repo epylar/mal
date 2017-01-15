@@ -6,4 +6,6 @@ authors = ["Gavin Lewis <epylar@gmail.com>"]
 [dependencies]
 regex = "*"
 libc = "*"
-rustyline = "*"
+
+# as Jan 14, 2017--rustyline 1.0.0 has mal-test-breaking bug
+rustyline = { git = "https://github.com/kkawakam/rustyline.git", rev = "ec773db" }

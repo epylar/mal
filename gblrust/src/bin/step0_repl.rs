@@ -20,6 +20,7 @@ fn rep(a: String) -> String {
 
 fn main() {
     let mut rl = Editor::<()>::new();
+
     loop {
         let readline = rl.readline("user> ");
         let input = match readline {
@@ -29,7 +30,8 @@ fn main() {
                 break;
             },
         };
-        
-        println!("{}", rep(input))
+
+        print!("{}", rep(input))
     }
 }
+

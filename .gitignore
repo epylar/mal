@@ -60,6 +60,7 @@ fsharp/*.exe
 fsharp/*.dll
 fsharp/*.mdb
 gblrust/target/
+gblrust/.idea/
 go/step*
 groovy/*.class
 groovy/mal.jar

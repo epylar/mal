@@ -110,7 +110,7 @@ fn eval(ast: MalVal, env: &HashMap<String,MalVal>) -> MalRet {
     // apply list
     match eval_ast(ast, env) {
         Ok(ok) => {
-            //println!("apply list ast: {}, env", ok.pr_str());
+            // println!("apply list ast: {}, env", ok.pr_str());
             match *ok {
                 List(ref args) => {
                     let ref f = args.clone()[0];
@@ -161,7 +161,7 @@ fn main() {
         let input = match readline {
             Ok(input) => input,
             Err(y) => {
-                println!("");
+                println!();
                 break;
             }
         };

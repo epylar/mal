@@ -8,7 +8,7 @@ SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
 #####################
 
-SRCS = step0_repl.rs step1_read_print.rs step2_eval.rs
+SRCS = step0_repl.rs step1_read_print.rs step2_eval.rs 
 BINS = $(SRCS:%.rs=target/release/%)
 
 #####################
@@ -17,7 +17,7 @@ all: $(BINS)
 
 dist: mal
 
-mal: target/release/step2_eval
+mal: target/release/stepA_mal
 	cp $< $@
 
 # TODO: would be nice to build just the step requested
