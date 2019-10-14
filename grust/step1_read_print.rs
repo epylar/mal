@@ -1,7 +1,9 @@
 extern crate rustyline;
+extern crate regex;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+mod reader;
 
 fn main() {
     // `()` can be used when no completer is required

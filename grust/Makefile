@@ -12,7 +12,7 @@ mal: step0_repl
 	cp target/release/$* $@
 
 STEP0_DEPS =
-STEP1_DEPS = $(STEP0_DEPS)
+STEP1_DEPS = $(STEP0_DEPS) reader.rs
 
 step0_repl: $(STEP0_DEPS)
 step1_read_print: $(STEP1_DEPS)
