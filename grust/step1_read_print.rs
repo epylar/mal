@@ -6,6 +6,7 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 mod reader;
+mod types;
 
 fn main() {
     // `()` can be used when no completer is required
