@@ -1,4 +1,4 @@
-STEPS = step0_repl
+STEPS = step0_repl step1_read_print
 
 all: $(STEPS)
 
@@ -12,8 +12,10 @@ mal: step0_repl
 	cp target/release/$* $@
 
 STEP0_DEPS =
+STEP1_DEPS = $(STEP0_DEPS)
 
 step0_repl: $(STEP0_DEPS)
+step1_read_print: $(STEP1_DEPS)
 
 .PHONY: clean
 
