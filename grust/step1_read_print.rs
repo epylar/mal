@@ -1,5 +1,7 @@
-extern crate rustyline;
 extern crate regex;
+#[macro_use]
+extern crate lazy_static;
+extern crate rustyline;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
