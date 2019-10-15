@@ -1,6 +1,5 @@
 use regex::Regex;
 use types::MalExpression;
-use test::NamePadding::PadNone;
 
 struct Reader<'a> {
     tokens: Vec<&'a str>,
@@ -44,37 +43,66 @@ fn tokenize(line: &str) -> Vec<&str> {
     vec
 }
 
-fn read_str(line: &str) -> Option<MalExpression> {
+pub(crate) fn read_str(line: &str) -> Option<MalExpression> {
     // call tokenize, create new Reader instance with tokens
     // call read_form with the Reader instance
     let tokenized = tokenize(line);
-    let reader = Reader { tokens: tokenized, index: 0 };
-    read_form(&reader)
+    let mut reader = Reader {
+        tokens: tokenized,
+        index: 0,
+    };
+    read_form(&mut reader)
 }
 
-fn read_form(reader: &Reader) -> Option<MalExpression> {
+fn read_form(reader: &mut Reader) -> Option<MalExpression> {
     match reader.peek() {
         Some(token) => match token.as_ref() {
             "(" => read_list(reader),
-            _ => read_atom(reader)
-        }
-        None => None
+            _ => read_atom(reader),
+        },
+        None => None,
     }
 }
 
-fn read_list(reader: &Reader) -> Option<MalExpression> {
-    let list_vec: Vec<MalExpression> = vec![];
-    while (reader.peek() != ")") {
-        match read_form(reader) {
-            Some(expression) => list_vec.push(expression),
-            None => None
+fn read_list(reader: &mut Reader) -> Option<MalExpression> {
+    let mut list_vec: Vec<MalExpression> = vec![];
+    match reader.next() {
+        Some(token) => {
+            if token != "(".to_string() {
+                return None;
+            }
+        }
+        None => return None,
+    }
+    loop {
+        // TODO: more idiomatic way to do this?
+        match reader.peek() {
+            Some(token) => match token.as_ref() {
+                ")" => return Some(MalExpression::List(list_vec)),
+                _ => match read_form(reader) {
+                    Some(expression) => list_vec.push(expression),
+                    None => return None,
+                },
+            },
+            None => return None,
         }
     }
-    Some(MalExpression::List(list_vec))
 }
 
-fn read_atom(reader: &Reader) -> Option<MalExpression> {
-    
+fn read_atom(reader: &mut Reader) -> Option<MalExpression> {
+    match reader.next() {
+        Some(token) => match token.parse::<i32>() {
+            Ok(number) => Some(MalExpression::Int(number)),
+            Err(_) => {
+                if token.chars().nth(0).unwrap() == '"' {
+                    Some(MalExpression::String(token))
+                } else {
+                    Some(MalExpression::Symbol(token))
+                }
+            }
+        },
+        None => None,
+    }
 }
 
 #[cfg(test)]
@@ -89,6 +117,14 @@ mod tests {
 
     #[test]
     fn test_read_str() {
-        assert_eq!(format!("{:?}", read_str("(1 2 3)").unwrap()), "Some(Int(1))")
+        assert_eq!(
+            format!("{:?}", read_str("(1 2 3)").unwrap()),
+            "List([Int(1), Int(2), Int(3)])"
+        );
+        assert_eq!(
+            format!("{:?}", read_str("(1 \"a\" 2 3 (c))").unwrap()),
+            "List([Int(1), String(\"\\\"a\\\"\"), Int(2), Int(3), List([Symbol(\"c\")])])"
+        );
+        assert_eq!(format!("{:?}", read_str("(")), "None")
     }
 }

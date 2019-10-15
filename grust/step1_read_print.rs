@@ -2,11 +2,11 @@ extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 extern crate rustyline;
-extern crate test;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 mod reader;
+mod printer;
 mod types;
 
 fn main() {
