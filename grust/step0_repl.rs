@@ -3,6 +3,22 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
+fn READ(input: &str) -> &str{
+    input
+}
+
+fn EVAL(form: &str) -> &str {
+    form
+}
+
+fn PRINT(form: &str) -> &str {
+    form
+}
+
+fn rep(line: &str) -> &str {
+    PRINT(EVAL(READ(line)))
+}
+
 fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -17,7 +33,7 @@ fn main() {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
                 if line.len() > 0 {
-                    println!("{}", line);
+                    println!("{}", rep(&line.as_ref()));
                 }
             }
             Err(ReadlineError::Interrupted) => continue,

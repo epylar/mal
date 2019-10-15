@@ -1,13 +1,14 @@
 use types::MalExpression;
 use reader::read_str;
 
-fn pr_str(expression: &MalExpression) -> String {
+pub(crate) fn pr_str(expression: &MalExpression) -> String {
     match expression {
         MalExpression::Int(i) => i.to_string(),
         MalExpression::Symbol(s) => s.to_string(),
         MalExpression::String(s) => s.to_string(),
         MalExpression::List(l) => {
-            "list".to_string()
+            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            format!("({})", middle.join(" "))
         }
         _ => "not_implemented".to_string()
     }
@@ -24,5 +25,6 @@ mod tests {
         assert_eq!(pr_str(&read_str("1").unwrap()), "1");
         assert_eq!(pr_str(&read_str("a").unwrap()), "a");
         assert_eq!(pr_str(&read_str("\"a\"").unwrap()), "\"a\"");
+        assert_eq!(pr_str(&read_str("(1  2 3)").unwrap()), "(1 2 3)");
     }
 }
