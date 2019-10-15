@@ -3,14 +3,17 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-fn READ(input: &str) -> &str{
+#[allow(non_snake_case)]
+fn READ(input: &str) -> &str {
     input
 }
 
+#[allow(non_snake_case)]
 fn EVAL(form: &str) -> &str {
     form
 }
 
+#[allow(non_snake_case)]
 fn PRINT(form: &str) -> &str {
     form
 }

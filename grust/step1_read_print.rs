@@ -3,28 +3,31 @@ extern crate regex;
 extern crate lazy_static;
 extern crate rustyline;
 
+use printer::pr_str;
+use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use types::MalExpression;
-use reader::read_str;
-use printer::pr_str;
 
-mod reader;
 mod printer;
+mod reader;
 mod types;
 
+#[allow(non_snake_case)]
 fn READ(input: &str) -> Option<MalExpression> {
     read_str(input)
 }
 
+#[allow(non_snake_case)]
 fn EVAL(form: Option<MalExpression>) -> Option<MalExpression> {
     form
 }
 
+#[allow(non_snake_case)]
 fn PRINT(form: Option<MalExpression>) -> Option<String> {
     match form {
         Some(actual_form) => Some(pr_str(&actual_form)),
-        None => None
+        None => None,
     }
 }
 
@@ -46,7 +49,10 @@ fn main() {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
                 if line.len() > 0 {
-                    println!("{}", rep(&line.to_owned()));
+                    match rep(&line.to_owned()) {
+                        Some(result) => println!("{}", result),
+                        None => println!("unexpected EOF"),
+                    }
                 }
             }
             Err(ReadlineError::Interrupted) => continue,
@@ -56,5 +62,26 @@ fn main() {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_rep() {
+        assert_eq!(rep("(1 2 3)").unwrap(), "(1 2 3)");
+        assert_eq!(rep("(1 \"a\" 2 3 (c))").unwrap(), "(1 \"a\" 2 3 (c))");
+        assert_eq!(rep("1").unwrap(), "1");
+        assert_eq!(rep("a").unwrap(), "a");
+        assert_eq!(rep("\"a\"").unwrap(), "\"a\"");
+        assert_eq!(rep("(1  2 3)").unwrap(), "(1 2 3)");
+    }
+
+    #[test]
+    fn test_rep_nested_lists() {
+        assert_eq!(rep("(()())").unwrap(), "(() ())")
     }
 }

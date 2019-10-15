@@ -4,7 +4,7 @@ all: $(STEPS)
 
 dist: mal
 
-mal: step0_repl
+mal: step1_read_print
 	cp $< $@
 
 %: %.rs

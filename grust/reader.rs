@@ -1,6 +1,7 @@
 use regex::Regex;
 use types::MalExpression;
 
+#[derive(Debug)]
 struct Reader<'a> {
     tokens: Vec<&'a str>,
     index: usize,
@@ -11,7 +12,9 @@ impl<'a> Reader<'a> {
         // return current token, increment
         if self.tokens.len() > self.index {
             self.index += 1;
-            Some(self.tokens[self.index - 1].to_string())
+            let result = self.tokens[self.index - 1].to_string();
+            //            println!("NEXT: {}", result);
+            Some(result)
         } else {
             None
         }
@@ -19,22 +22,25 @@ impl<'a> Reader<'a> {
     fn peek(&self) -> Option<String> {
         // just peek at current token
         if self.tokens.len() > self.index {
-            Some(self.tokens[self.index].to_string())
+            let result = self.tokens[self.index].to_string();
+            //            println!("PEEK: {}", result);
+            Some(result)
         } else {
             None
         }
     }
 }
 
+#[allow(deprecated)]
 fn tokenize(line: &str) -> Vec<&str> {
     lazy_static! {
-        static ref re: Regex = Regex::new(
+        static ref RE: Regex = Regex::new(
             r#"[\s,]*(?P<token>~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#
         )
         .unwrap();
     }
     let mut vec: Vec<&str> = Vec::new();
-    for c in re.captures_iter(line) {
+    for c in RE.captures_iter(line) {
         match c.name("token") {
             Some(x) => (vec.push(x.as_str())),
             None => (),
@@ -55,9 +61,11 @@ pub(crate) fn read_str(line: &str) -> Option<MalExpression> {
 }
 
 fn read_form(reader: &mut Reader) -> Option<MalExpression> {
+    //    println!("read_form: {}", format!("{:?}", reader));
     match reader.peek() {
         Some(token) => match token.as_ref() {
             "(" => read_list(reader),
+            "[" => read_vector(reader),
             _ => read_atom(reader),
         },
         None => None,
@@ -65,10 +73,31 @@ fn read_form(reader: &mut Reader) -> Option<MalExpression> {
 }
 
 fn read_list(reader: &mut Reader) -> Option<MalExpression> {
+    match read_sequence(reader, "(", ")") {
+        Some(sequence) => Some(MalExpression::List(sequence)),
+        None => None,
+    }
+}
+
+fn read_vector(reader: &mut Reader) -> Option<MalExpression> {
+    match read_sequence(reader, "[", "]") {
+        Some(sequence) => Some(MalExpression::Vector(sequence)),
+        None => None,
+    }
+}
+
+fn read_sequence(
+    reader: &mut Reader,
+    opening_token: &str,
+    closing_token: &str,
+) -> Option<Vec<MalExpression>> {
+    //    println!("read_sequence: {}", format!("{:?}", reader));
     let mut list_vec: Vec<MalExpression> = vec![];
-    match reader.next() {
+    match reader.peek() {
         Some(token) => {
-            if token != "(".to_string() {
+            if token == opening_token.to_string() {
+                reader.next(); // swallow opening token
+            } else {
                 return None;
             }
         }
@@ -77,13 +106,17 @@ fn read_list(reader: &mut Reader) -> Option<MalExpression> {
     loop {
         // TODO: more idiomatic way to do this?
         match reader.peek() {
-            Some(token) => match token.as_ref() {
-                ")" => return Some(MalExpression::List(list_vec)),
-                _ => match read_form(reader) {
-                    Some(expression) => list_vec.push(expression),
-                    None => return None,
-                },
-            },
+            Some(token) => {
+                if token == closing_token.to_string() {
+                    reader.next(); // swallow closing token
+                    return Some(list_vec);
+                } else {
+                    match read_form(reader) {
+                        Some(expression) => list_vec.push(expression),
+                        None => return None,
+                    }
+                }
+            }
             None => return None,
         }
     }
@@ -94,8 +127,13 @@ fn read_atom(reader: &mut Reader) -> Option<MalExpression> {
         Some(token) => match token.parse::<i32>() {
             Ok(number) => Some(MalExpression::Int(number)),
             Err(_) => {
-                if token.chars().nth(0).unwrap() == '"' {
-                    Some(MalExpression::String(token))
+                let chars = token.chars();
+                if chars.nth(0).unwrap() == '"' {
+                    if chars.count() < 2 || chars.last().unwrap() != '"' {
+                        None
+                    } else {
+                        Some(MalExpression::String(token))
+                    }
                 } else {
                     Some(MalExpression::Symbol(token))
                 }

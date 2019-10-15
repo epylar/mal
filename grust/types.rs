@@ -4,4 +4,5 @@ pub(crate) enum MalExpression {
     Int(i32),
     List(Vec<MalExpression>),
     String(String),
+    Vector(Vec<MalExpression>),
 }

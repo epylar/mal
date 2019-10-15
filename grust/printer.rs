@@ -1,5 +1,4 @@
 use types::MalExpression;
-use reader::read_str;
 
 pub(crate) fn pr_str(expression: &MalExpression) -> String {
     match expression {
@@ -10,7 +9,10 @@ pub(crate) fn pr_str(expression: &MalExpression) -> String {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("({})", middle.join(" "))
         }
-        _ => "not_implemented".to_string()
+        MalExpression::Vector(l) => {
+            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            format!("[{}]", middle.join(" "))
+        }
     }
 }
 
@@ -22,9 +24,5 @@ mod tests {
     #[test]
     fn test_pr_str() {
         assert_eq!(pr_str(&MalExpression::Int(1)), "1");
-        assert_eq!(pr_str(&read_str("1").unwrap()), "1");
-        assert_eq!(pr_str(&read_str("a").unwrap()), "a");
-        assert_eq!(pr_str(&read_str("\"a\"").unwrap()), "\"a\"");
-        assert_eq!(pr_str(&read_str("(1  2 3)").unwrap()), "(1 2 3)");
     }
 }
