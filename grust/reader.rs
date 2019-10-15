@@ -1,20 +1,29 @@
-use regex::{Regex};
+use regex::Regex;
+use types::MalExpression;
+use test::NamePadding::PadNone;
 
 struct Reader<'a> {
-    tokens: Vec<&'a str>
+    tokens: Vec<&'a str>,
+    index: usize,
 }
 
-impl Reader<'_> {
-    fn new(tokens: Vec<&str>) -> Reader {
-        Reader { tokens: tokens.clone() }
-    }
-    fn next(&mut self) -> &str {
+impl<'a> Reader<'a> {
+    fn next(&mut self) -> Option<String> {
         // return current token, increment
-        self.tokens[0]
+        if self.tokens.len() > self.index {
+            self.index += 1;
+            Some(self.tokens[self.index - 1].to_string())
+        } else {
+            None
+        }
     }
-    fn peek(&self) -> &str {
+    fn peek(&self) -> Option<String> {
         // just peek at current token
-        "abc"
+        if self.tokens.len() > self.index {
+            Some(self.tokens[self.index].to_string())
+        } else {
+            None
+        }
     }
 }
 
@@ -35,23 +44,37 @@ fn tokenize(line: &str) -> Vec<&str> {
     vec
 }
 
-fn read_str(line: &str) -> &str {
+fn read_str(line: &str) -> Option<MalExpression> {
     // call tokenize, create new Reader instance with tokens
     // call read_form with the Reader instance
-    read_form(Reader::new(tokenize(line)))
+    let tokenized = tokenize(line);
+    let reader = Reader { tokens: tokenized, index: 0 };
+    read_form(&reader)
 }
 
-fn read_form(reader: &mut Reader) -> &'static str {
-    // This function will peek at the first token in the Reader object and switch on the first
-    // character of that token. If the character is a left paren then read_list is called with
-    // the Reader object. Otherwise, read_atom is called with the Reader Object. The return value
-    // from read_form is a mal data type. If your target language is statically typed then you will
-    // need some way for read_form to return a variant or subclass type. For example, if your
-    // language is object oriented, then you can define a top level MalType (in types.qx) that
-    // all your mal data types inherit from. The MalList type (which also inherits from MalType)
-    // will contain a list/array of other MalTypes. If your language is dynamically typed then
-    // you can likely just return a plain list/array of other mal types.
-    "abc"
+fn read_form(reader: &Reader) -> Option<MalExpression> {
+    match reader.peek() {
+        Some(token) => match token.as_ref() {
+            "(" => read_list(reader),
+            _ => read_atom(reader)
+        }
+        None => None
+    }
+}
+
+fn read_list(reader: &Reader) -> Option<MalExpression> {
+    let list_vec: Vec<MalExpression> = vec![];
+    while (reader.peek() != ")") {
+        match read_form(reader) {
+            Some(expression) => list_vec.push(expression),
+            None => None
+        }
+    }
+    Some(MalExpression::List(list_vec))
+}
+
+fn read_atom(reader: &Reader) -> Option<MalExpression> {
+    
 }
 
 #[cfg(test)]
@@ -62,5 +85,10 @@ mod tests {
     #[test]
     fn test_tokenize() {
         assert_eq!(tokenize("(1, 2 3)"), vec!["(", "1", "2", "3", ")"]);
+    }
+
+    #[test]
+    fn test_read_str() {
+        assert_eq!(format!("{:?}", read_str("(1 2 3)").unwrap()), "Some(Int(1))")
     }
 }
