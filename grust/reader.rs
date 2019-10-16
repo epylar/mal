@@ -1,5 +1,6 @@
-use regex::Regex;
+use regex::{Regex};
 use types::MalExpression;
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 struct Reader<'a> {
@@ -49,7 +50,7 @@ fn tokenize(line: &str) -> Vec<&str> {
     vec
 }
 
-pub(crate) fn read_str(line: &str) -> Option<MalExpression> {
+pub(crate) fn read_str(line: &str) -> Result<MalExpression, String> {
     // call tokenize, create new Reader instance with tokens
     // call read_form with the Reader instance
     let tokenized = tokenize(line);
@@ -60,7 +61,7 @@ pub(crate) fn read_str(line: &str) -> Option<MalExpression> {
     read_form(&mut reader)
 }
 
-fn read_form(reader: &mut Reader) -> Option<MalExpression> {
+fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
     //    println!("read_form: {}", format!("{:?}", reader));
     match reader.peek() {
         Some(token) => match token.as_ref() {
@@ -68,21 +69,21 @@ fn read_form(reader: &mut Reader) -> Option<MalExpression> {
             "[" => read_vector(reader),
             _ => read_atom(reader),
         },
-        None => None,
+        None => Err("unexpected EOF".to_string()),
     }
 }
 
-fn read_list(reader: &mut Reader) -> Option<MalExpression> {
+fn read_list(reader: &mut Reader) -> Result<MalExpression, String> {
     match read_sequence(reader, "(", ")") {
-        Some(sequence) => Some(MalExpression::List(sequence)),
-        None => None,
+        Ok(sequence) => Ok(MalExpression::List(sequence)),
+        Err(e) => Err(e),
     }
 }
 
-fn read_vector(reader: &mut Reader) -> Option<MalExpression> {
+fn read_vector(reader: &mut Reader) -> Result<MalExpression, String> {
     match read_sequence(reader, "[", "]") {
-        Some(sequence) => Some(MalExpression::Vector(sequence)),
-        None => None,
+        Ok(sequence) => Ok(MalExpression::Vector(sequence)),
+        Err(e) => Err(e),
     }
 }
 
@@ -90,7 +91,7 @@ fn read_sequence(
     reader: &mut Reader,
     opening_token: &str,
     closing_token: &str,
-) -> Option<Vec<MalExpression>> {
+) -> Result<Vec<MalExpression>, String> {
     //    println!("read_sequence: {}", format!("{:?}", reader));
     let mut list_vec: Vec<MalExpression> = vec![];
     match reader.peek() {
@@ -98,10 +99,10 @@ fn read_sequence(
             if token == opening_token.to_string() {
                 reader.next(); // swallow opening token
             } else {
-                return None;
+                return Err("internal error: opening token incorrect in read_sequence".to_string())
             }
         }
-        None => return None,
+        None => return Err("internal error: EOF while reading opening token in read_sequence".to_string()),
     }
     loop {
         // TODO: more idiomatic way to do this?
@@ -109,38 +110,41 @@ fn read_sequence(
             Some(token) => {
                 if token == closing_token.to_string() {
                     reader.next(); // swallow closing token
-                    return Some(list_vec);
+                    return Ok(list_vec);
                 } else {
                     match read_form(reader) {
-                        Some(expression) => list_vec.push(expression),
-                        None => return None,
+                        Ok(expression) => list_vec.push(expression),
+                        Err(e) => return Err(e),
                     }
                 }
             }
-            None => return None,
+            None => return Err("EOF while reading sequence".to_string()),
         }
     }
 }
 
-fn read_atom(reader: &mut Reader) -> Option<MalExpression> {
+fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
     match reader.next() {
         Some(token) => match token.parse::<i32>() {
-            Ok(number) => Some(MalExpression::Int(number)),
+            Ok(number) => Ok(MalExpression::Int(number)),
             Err(_) => {
                 let mut chars: Vec<char> = token.chars().collect();
-                if chars[0] == '"' {
+                if chars.len() > 0 && chars[0] == '"' {
+                    if chars.len() < 2 {
+                        return Err("unbalanced string: ".to_string() + String::from_iter(chars).as_ref())
+                    }
                     let mut result: Vec<char> = vec![];
                     for char in  chars[1..chars.len()-1].to_vec() {
                         // unescape?
                         result.push(char)
                     }
-                    Some(MalExpression::String(result.into_iter().collect()))
+                    Ok(MalExpression::String(result.into_iter().collect()))
                 } else {
-                    Some(MalExpression::Symbol(token))
+                    Ok(MalExpression::Symbol(token))
                 }
             }
         },
-        None => None,
+        None => Err("EOF while reading atom".to_string()),
     }
 }
 
@@ -161,9 +165,9 @@ mod tests {
             "List([Int(1), Int(2), Int(3)])"
         );
         assert_eq!(
-            format!("{:?}", read_str("(1 \"a\" 2 3 (c))").unwrap()),
-            "List([Int(1), String(\"\\\"a\\\"\"), Int(2), Int(3), List([Symbol(\"c\")])])"
+            format!("{:?}", read_str(r#"(1 "a" 2 3 (c))"#).unwrap()),
+            r#"List([Int(1), String("a"), Int(2), Int(3), List([Symbol("c")])])"#
         );
-        assert_eq!(format!("{:?}", read_str("(")), "None")
+        assert_eq!(format!("{:?}", read_str("(")), r#"Err("EOF while reading sequence")"#);
     }
 }

@@ -4,7 +4,7 @@ pub(crate) fn pr_str(expression: &MalExpression) -> String {
     match expression {
         MalExpression::Int(i) => i.to_string(),
         MalExpression::Symbol(s) => s.to_string(),
-        MalExpression::String(s) => s.to_string(),
+        MalExpression::String(s) => "\"".to_owned() + s + "\"",
         MalExpression::List(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("({})", middle.join(" "))

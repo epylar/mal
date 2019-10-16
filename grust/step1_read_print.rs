@@ -14,24 +14,24 @@ mod reader;
 mod types;
 
 #[allow(non_snake_case)]
-fn READ(input: &str) -> Option<MalExpression> {
+fn READ(input: &str) -> Result<MalExpression, String> {
     read_str(input)
 }
 
 #[allow(non_snake_case)]
-fn EVAL(form: Option<MalExpression>) -> Option<MalExpression> {
+fn EVAL(form: Result<MalExpression, String>) -> Result<MalExpression, String> {
     form
 }
 
 #[allow(non_snake_case)]
-fn PRINT(form: Option<MalExpression>) -> Option<String> {
+fn PRINT(form: Result<MalExpression, String>) -> Result<String, String> {
     match form {
-        Some(actual_form) => Some(pr_str(&actual_form)),
-        None => None,
+        Ok(actual_form) => Ok(pr_str(&actual_form)),
+        Err(e) => Err(e),
     }
 }
 
-fn rep(line: &str) -> Option<String> {
+fn rep(line: &str) -> Result<String, String> {
     PRINT(EVAL(READ(line)))
 }
 
@@ -50,8 +50,8 @@ fn main() {
                 rl.save_history(".mal-history").unwrap();
                 if line.len() > 0 {
                     match rep(&line.to_owned()) {
-                        Some(result) => println!("{}", result),
-                        None => println!("unexpected EOF"),
+                        Ok(result) => println!("{}", result),
+                        Err(e) => println!("error: {}", e),
                     }
                 }
             }
