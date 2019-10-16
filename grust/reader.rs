@@ -127,13 +127,14 @@ fn read_atom(reader: &mut Reader) -> Option<MalExpression> {
         Some(token) => match token.parse::<i32>() {
             Ok(number) => Some(MalExpression::Int(number)),
             Err(_) => {
-                let chars = token.chars();
-                if chars.nth(0).unwrap() == '"' {
-                    if chars.count() < 2 || chars.last().unwrap() != '"' {
-                        None
-                    } else {
-                        Some(MalExpression::String(token))
+                let mut chars: Vec<char> = token.chars().collect();
+                if chars[0] == '"' {
+                    let mut result: Vec<char> = vec![];
+                    for char in  chars[1..chars.len()-1].to_vec() {
+                        // unescape?
+                        result.push(char)
                     }
+                    Some(MalExpression::String(result.into_iter().collect()))
                 } else {
                     Some(MalExpression::Symbol(token))
                 }
