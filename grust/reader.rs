@@ -127,27 +127,27 @@ fn read_sequence(
 
 fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
     match reader.next() {
-        Some(token) => match token.parse::<i32>() {
-            Ok(number) => Ok(MalExpression::Int(number)),
-            Err(_) => {
-                let mut chars: Vec<char> = token.chars().collect();
-                if !chars.is_empty() && chars[0] == '"' {
-                    if chars.len() < 2 {
-                        return Err(
-                            "unbalanced string: ".to_string() + String::from_iter(chars).as_ref()
-                        );
-                    }
-                    let mut result: Vec<char> = vec![];
-                    for char in chars[1..chars.len() - 1].to_vec() {
-                        // unescape?
-                        result.push(char)
-                    }
-                    Ok(MalExpression::String(result.into_iter().collect()))
-                } else {
-                    Ok(MalExpression::Symbol(token))
-                }
+        Some(token) => {
+            if let Ok(number) = token.parse::<i32>() {
+                return Ok(MalExpression::Int(number));
             }
-        },
+            let chars: Vec<char> = token.chars().collect();
+            if !chars.is_empty() && chars[0] == '"' {
+                if chars.len() < 2 {
+                    return Err(
+                        "unbalanced string: ".to_string() + String::from_iter(chars).as_ref()
+                    );
+                }
+                let mut result: Vec<char> = vec![];
+                for char in chars[1..chars.len() - 1].to_vec() {
+                    // unescape?
+                    result.push(char)
+                }
+                Ok(MalExpression::String(result.into_iter().collect()))
+            } else {
+                Ok(MalExpression::Symbol(token))
+            }
+        }
         None => Err("EOF while reading atom".to_string()),
     }
 }
