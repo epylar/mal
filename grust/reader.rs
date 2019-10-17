@@ -1,5 +1,4 @@
 use regex::Regex;
-use std::iter::FromIterator;
 use types::MalExpression;
 #[derive(Debug)]
 struct Reader<'a> {
@@ -8,21 +7,21 @@ struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-    fn next(&mut self) -> Option<String> {
+    fn next(&mut self) -> Option<&str> {
         // return current token, increment
         if self.tokens.len() > self.index {
             self.index += 1;
-            let result = self.tokens[self.index - 1].to_string();
+            let result = self.tokens[self.index - 1];
             //            println!("NEXT: {}", result);
             Some(result)
         } else {
             None
         }
     }
-    fn peek(&self) -> Option<String> {
+    fn peek(&self) -> Option<&str> {
         // just peek at current token
         if self.tokens.len() > self.index {
-            let result = self.tokens[self.index].to_string();
+            let result = self.tokens[self.index];
             //            println!("PEEK: {}", result);
             Some(result)
         } else {
@@ -125,27 +124,67 @@ fn read_sequence(
     }
 }
 
+#[allow(deprecated)]
+fn tokenize_quoted_string(string: &str) -> Vec<&str> {
+    // '"abc"' -> ['"', 'a', 'b', 'c', '"']
+    // '"a\"bc"' -> ['"', 'a', '\"', 'c', '"']
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r#"(?P<element>([^"\\])|(\\["n\\])|("))"#).unwrap();
+    }
+    let mut vec: Vec<&str> = Vec::new();
+    for c in RE.captures_iter(string) {
+        if let Some(x) = c.name("element") {
+            vec.push(x.as_str())
+        }
+    }
+    vec
+}
+
+fn escaped_to_char(string: &str) -> Result<char, String> {
+    let chars: Vec<char> = string.chars().collect();
+    if chars.len() == 1 {
+        Ok(chars[0])
+    } else if string == r#"\""# {
+        Ok('"')
+    } else if string == r#"\n"# {
+        Ok('\n')
+    } else if string == r#"\\"# {
+        Ok('\\')
+    } else {
+        Err(format!("invalid escape sequence {}", string))
+    }
+}
+
+fn unescape_string(string: &str) -> Result<String, String> {
+    let tokens: Vec<&str> = tokenize_quoted_string(string);
+    if tokens.len() < 2 || tokens.first().unwrap() != &"\"" || tokens.last().unwrap() != &"\"" {
+        Err(format!("invalid or unbalanced string {}", string))
+    } else {
+        let result: Result<Vec<char>, String> = tokens
+            .into_iter()
+            .map(|element: &str| escaped_to_char(element))
+            .collect();
+
+        match result {
+            Ok(r) => Ok(r[1..r.len() - 1].into_iter().collect()),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
     match reader.next() {
         Some(token) => {
             if let Ok(number) = token.parse::<i32>() {
                 return Ok(MalExpression::Int(number));
             }
-            let chars: Vec<char> = token.chars().collect();
-            if !chars.is_empty() && chars[0] == '"' {
-                if chars.len() < 2 {
-                    return Err(
-                        "unbalanced string: ".to_string() + String::from_iter(chars).as_ref()
-                    );
-                }
-                let mut result: Vec<char> = vec![];
-                for char in chars[1..chars.len() - 1].to_vec() {
-                    // unescape?
-                    result.push(char)
-                }
-                Ok(MalExpression::String(result.into_iter().collect()))
-            } else {
-                Ok(MalExpression::Symbol(token))
+            match token.chars().next() {
+                None => Err("internal error: empty token".to_string()),
+                Some('"') => match unescape_string(token) {
+                    Ok(s) => Ok(MalExpression::String(s)),
+                    Err(e) => Err(e),
+                },
+                Some(_) => Ok(MalExpression::Symbol(token.to_string())),
             }
         }
         None => Err("EOF while reading atom".to_string()),
@@ -163,6 +202,25 @@ mod tests {
     }
 
     #[test]
+    fn test_tokenize_quoted_str() {
+        assert_eq!(tokenize_quoted_string(r#""a""#), ["\"", "a", "\""]);
+        assert_eq!(tokenize_quoted_string(r#""a\n"#), ["\"", "a", "\\n"])
+    }
+
+    #[test]
+    fn test_unescape_str() {
+        assert_eq!(unescape_string(r#""abc""#), Ok(r#"abc"#.to_string()));
+        assert_eq!(
+            unescape_string(r#""abc"#),
+            Err(r#"invalid string "abc"#.to_string())
+        );
+        assert_eq!(
+            format!("{:?}", unescape_string("abc")),
+            r#"Err("invalid string abc")"#
+        );
+    }
+
+    #[test]
     fn test_read_str() {
         assert_eq!(
             format!("{:?}", read_str("(1 2 3)").unwrap()),
@@ -175,6 +233,10 @@ mod tests {
         assert_eq!(
             format!("{:?}", read_str("(")),
             r#"Err("EOF while reading sequence")"#
+        );
+        assert_eq!(
+            format!("{:?}", read_str("\"abc")),
+            r#"Err("invalid string \"abc")"#
         );
     }
 }
