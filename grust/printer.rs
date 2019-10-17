@@ -19,6 +19,10 @@ pub(crate) fn pr_str(expression: &MalExpression) -> String {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("[{}]", middle.join(" "))
         }
+        MalExpression::HashTable(l) => {
+            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            format!("{}{}{}", "{", middle.join(" "), "}")
+        }
     }
 }
 

@@ -64,6 +64,12 @@ fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
         Some(token) => match token {
             "(" => read_list(reader),
             "[" => read_vector(reader),
+            "{" => read_hash_table(reader),
+            "'" => read_quote(reader),
+            "`" => read_quasiquote(reader),
+            "~" => read_unquote(reader),
+            "~@" => read_splice_unquote(reader),
+            "@" => read_deref(reader),
             _ => read_atom(reader),
         },
         None => Err("unexpected EOF".to_string()),
@@ -81,6 +87,68 @@ fn read_vector(reader: &mut Reader) -> Result<MalExpression, String> {
     match read_sequence(reader, "[", "]") {
         Ok(sequence) => Ok(MalExpression::Vector(sequence)),
         Err(e) => Err(e),
+    }
+}
+
+fn read_hash_table(reader: &mut Reader) -> Result<MalExpression, String> {
+    match read_sequence(reader, "{", "}") {
+        Ok(sequence) => Ok(MalExpression::HashTable(sequence)),
+        Err(e) => Err(e),
+    }
+}
+
+fn read_quote(reader: &mut Reader) -> Result<MalExpression, String> {
+    if reader.next() != Some("'") {
+        Err("internal error: expected '".to_string())
+    } else {
+        match read_form(reader) {
+            Ok(x) => Ok(MalExpression::List(vec![MalExpression::Symbol("quote".to_string()), x])),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+fn read_quasiquote(reader: &mut Reader) -> Result<MalExpression, String> {
+    if reader.next() != Some("`") {
+        Err("internal error: expected `".to_string())
+    } else {
+        match read_form(reader) {
+            Ok(x) => Ok(MalExpression::List(vec![MalExpression::Symbol("quasiquote".to_string()), x])),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+fn read_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
+    if reader.next() != Some("~") {
+        Err("internal error: expected ~".to_string())
+    } else {
+        match read_form(reader) {
+            Ok(x) => Ok(MalExpression::List(vec![MalExpression::Symbol("unquote".to_string()), x])),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+fn read_splice_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
+    if reader.next() != Some("~@") {
+        Err("internal error: expected ~@".to_string())
+    } else {
+        match read_form(reader) {
+            Ok(x) => Ok(MalExpression::List(vec![MalExpression::Symbol("splice-unquote".to_string()), x])),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+fn read_deref(reader: &mut Reader) -> Result<MalExpression, String> {
+    if reader.next() != Some("@") {
+        Err("internal error: expected @".to_string())
+    } else {
+        match read_form(reader) {
+            Ok(x) => Ok(MalExpression::List(vec![MalExpression::Symbol("deref".to_string()), x])),
+            Err(e) => Err(e)
+        }
     }
 }
 
@@ -212,11 +280,11 @@ mod tests {
         assert_eq!(unescape_string(r#""abc""#), Ok(r#"abc"#.to_string()));
         assert_eq!(
             unescape_string(r#""abc"#),
-            Err(r#"invalid string "abc"#.to_string())
+            Err(r#"invalid or unbalanced string "abc"#.to_string())
         );
         assert_eq!(
             format!("{:?}", unescape_string("abc")),
-            r#"Err("invalid string abc")"#
+            r#"Err("invalid or unbalanced string abc")"#
         );
     }
 
@@ -236,7 +304,7 @@ mod tests {
         );
         assert_eq!(
             format!("{:?}", read_str("\"abc")),
-            r#"Err("invalid string \"abc")"#
+            r#"Err("invalid or unbalanced string \"abc")"#
         );
     }
 }

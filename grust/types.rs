@@ -5,4 +5,5 @@ pub(crate) enum MalExpression {
     List(Vec<MalExpression>),
     String(String),
     Vector(Vec<MalExpression>),
+    HashTable(Vec<MalExpression>)
 }
