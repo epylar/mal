@@ -61,7 +61,7 @@ pub(crate) fn read_str(line: &str) -> Result<MalExpression, String> {
 fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
     //    println!("read_form: {}", format!("{:?}", reader));
     match reader.peek() {
-        Some(token) => match token.as_ref() {
+        Some(token) => match token {
             "(" => read_list(reader),
             "[" => read_vector(reader),
             _ => read_atom(reader),
@@ -166,7 +166,7 @@ fn unescape_string(string: &str) -> Result<String, String> {
             .collect();
 
         match result {
-            Ok(r) => Ok(r[1..r.len() - 1].into_iter().collect()),
+            Ok(r) => Ok(r[1..r.len() - 1].iter().collect()),
             Err(e) => Err(e),
         }
     }
