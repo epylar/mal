@@ -1,7 +1,6 @@
-use regex::{Regex};
-use types::MalExpression;
+use regex::Regex;
 use std::iter::FromIterator;
-
+use types::MalExpression;
 #[derive(Debug)]
 struct Reader<'a> {
     tokens: Vec<&'a str>,
@@ -42,9 +41,8 @@ fn tokenize(line: &str) -> Vec<&str> {
     }
     let mut vec: Vec<&str> = Vec::new();
     for c in RE.captures_iter(line) {
-        match c.name("token") {
-            Some(x) => (vec.push(x.as_str())),
-            None => (),
+        if let Some(x) = c.name("token") {
+            vec.push(x.as_str())
         }
     }
     vec
@@ -96,19 +94,23 @@ fn read_sequence(
     let mut list_vec: Vec<MalExpression> = vec![];
     match reader.peek() {
         Some(token) => {
-            if token == opening_token.to_string() {
+            if token == opening_token {
                 reader.next(); // swallow opening token
             } else {
-                return Err("internal error: opening token incorrect in read_sequence".to_string())
+                return Err("internal error: opening token incorrect in read_sequence".to_string());
             }
         }
-        None => return Err("internal error: EOF while reading opening token in read_sequence".to_string()),
+        None => {
+            return Err(
+                "internal error: EOF while reading opening token in read_sequence".to_string(),
+            )
+        }
     }
     loop {
         // TODO: more idiomatic way to do this?
         match reader.peek() {
             Some(token) => {
-                if token == closing_token.to_string() {
+                if token == closing_token {
                     reader.next(); // swallow closing token
                     return Ok(list_vec);
                 } else {
@@ -129,12 +131,14 @@ fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
             Ok(number) => Ok(MalExpression::Int(number)),
             Err(_) => {
                 let mut chars: Vec<char> = token.chars().collect();
-                if chars.len() > 0 && chars[0] == '"' {
+                if !chars.is_empty() && chars[0] == '"' {
                     if chars.len() < 2 {
-                        return Err("unbalanced string: ".to_string() + String::from_iter(chars).as_ref())
+                        return Err(
+                            "unbalanced string: ".to_string() + String::from_iter(chars).as_ref()
+                        );
                     }
                     let mut result: Vec<char> = vec![];
-                    for char in  chars[1..chars.len()-1].to_vec() {
+                    for char in chars[1..chars.len() - 1].to_vec() {
                         // unescape?
                         result.push(char)
                     }
@@ -168,6 +172,9 @@ mod tests {
             format!("{:?}", read_str(r#"(1 "a" 2 3 (c))"#).unwrap()),
             r#"List([Int(1), String("a"), Int(2), Int(3), List([Symbol("c")])])"#
         );
-        assert_eq!(format!("{:?}", read_str("(")), r#"Err("EOF while reading sequence")"#);
+        assert_eq!(
+            format!("{:?}", read_str("(")),
+            r#"Err("EOF while reading sequence")"#
+        );
     }
 }

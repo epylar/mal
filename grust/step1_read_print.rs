@@ -48,7 +48,7 @@ fn main() {
             Ok(line) => {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
-                if line.len() > 0 {
+                if !line.is_empty() {
                     match rep(&line.to_owned()) {
                         Ok(result) => println!("{}", result),
                         Err(e) => println!("error: {}", e),
