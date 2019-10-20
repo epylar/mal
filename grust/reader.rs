@@ -1,27 +1,27 @@
-use regex::Regex;
+use regex::{Regex};
 use types::MalExpression;
 #[derive(Debug)]
-struct Reader<'a> {
-    tokens: Vec<&'a str>,
+struct Reader {
+    tokens: Vec<String>,
     index: usize,
 }
 
-impl<'a> Reader<'a> {
-    fn next(&mut self) -> Option<&str> {
+impl Reader {
+    fn next(&mut self) -> Option<String> {
         // return current token, increment
         if self.tokens.len() > self.index {
             self.index += 1;
-            let result = self.tokens[self.index - 1];
+            let result = self.tokens[self.index - 1].clone();
             //            println!("NEXT: {}", result);
             Some(result)
         } else {
             None
         }
     }
-    fn peek(&self) -> Option<&str> {
+    fn peek(&self) -> Option<String> {
         // just peek at current token
         if self.tokens.len() > self.index {
-            let result = self.tokens[self.index];
+            let result = self.tokens[self.index].clone();
             //            println!("PEEK: {}", result);
             Some(result)
         } else {
@@ -31,17 +31,18 @@ impl<'a> Reader<'a> {
 }
 
 #[allow(deprecated)]
-fn tokenize(line: &str) -> Vec<&str> {
+fn tokenize(line: &str) -> Vec<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
             r#"[\s,]*(?P<token>~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#
         )
         .unwrap();
     }
-    let mut vec: Vec<&str> = Vec::new();
-    for c in RE.captures_iter(line) {
+    let mut vec: Vec<String> = vec![];
+    let re: &Regex = &RE; // helps IDE autocompletion
+    for c in re.captures_iter(line) {
         if let Some(x) = c.name("token") {
-            vec.push(x.as_str())
+            vec.push(x.as_str().to_string())
         }
     }
     vec
@@ -60,8 +61,9 @@ pub(crate) fn read_str(line: &str) -> Result<MalExpression, String> {
 
 fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
     //    println!("read_form: {}", format!("{:?}", reader));
-    match reader.peek() {
-        Some(token) => match token {
+    let peek = reader.peek();
+    match peek {
+        Some(token) => match &token[..] {
             "(" => read_list(reader),
             "[" => read_vector(reader),
             "{" => read_hash_table(reader),
@@ -98,7 +100,7 @@ fn read_hash_table(reader: &mut Reader) -> Result<MalExpression, String> {
 }
 
 fn read_quote(reader: &mut Reader) -> Result<MalExpression, String> {
-    if reader.next() != Some("'") {
+    if reader.next() != Some("'".to_string()) {
         Err("internal error: expected '".to_string())
     } else {
         match read_form(reader) {
@@ -109,7 +111,7 @@ fn read_quote(reader: &mut Reader) -> Result<MalExpression, String> {
 }
 
 fn read_quasiquote(reader: &mut Reader) -> Result<MalExpression, String> {
-    if reader.next() != Some("`") {
+    if reader.next() != Some("`".to_string()) {
         Err("internal error: expected `".to_string())
     } else {
         match read_form(reader) {
@@ -120,7 +122,7 @@ fn read_quasiquote(reader: &mut Reader) -> Result<MalExpression, String> {
 }
 
 fn read_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
-    if reader.next() != Some("~") {
+    if reader.next() != Some("~".to_string()) {
         Err("internal error: expected ~".to_string())
     } else {
         match read_form(reader) {
@@ -131,7 +133,7 @@ fn read_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
 }
 
 fn read_splice_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
-    if reader.next() != Some("~@") {
+    if reader.next() != Some("~@".to_string()) {
         Err("internal error: expected ~@".to_string())
     } else {
         match read_form(reader) {
@@ -142,7 +144,7 @@ fn read_splice_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
 }
 
 fn read_deref(reader: &mut Reader) -> Result<MalExpression, String> {
-    if reader.next() != Some("@") {
+    if reader.next() != Some("@".to_string()) {
         Err("internal error: expected @".to_string())
     } else {
         match read_form(reader) {
@@ -248,7 +250,7 @@ fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
             }
             match token.chars().next() {
                 None => Err("internal error: empty token".to_string()),
-                Some('"') => match unescape_string(token) {
+                Some('"') => match unescape_string(&token) {
                     Ok(s) => Ok(MalExpression::String(s)),
                     Err(e) => Err(e),
                 },
