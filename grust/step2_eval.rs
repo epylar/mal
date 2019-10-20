@@ -1,8 +1,8 @@
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
-extern crate rustyline;
 extern crate itertools;
+extern crate rustyline;
 
 mod printer;
 mod reader;
@@ -12,9 +12,9 @@ use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use std::collections::HashMap;
 use types::MalExpression;
 use types::MalRet;
-use std::collections::HashMap;
 
 type Env = HashMap<String, MalExpression>;
 
@@ -35,28 +35,23 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
                     MalExpression::List(el) => {
                         if el.is_empty() {
                             Err("internal error: eval_ast non empty list => empty list".to_string())
+                        } else if let Some(MalExpression::Function(f)) = el.first() {
+                            let rest = &el[1..];
+                            f(MalExpression::List(rest.to_vec()))
                         } else {
-                            if let Some(MalExpression::Function(f)) = el.first() {
-                                let rest = &el[1..];
-                                f(MalExpression::List(rest.to_vec()))
-                            } else {
-                                match l.first() {
-                                    Some(me) => {
-                                        Err(format!("not a function: {}", pr_str(me)))
-                                    },
-                                    None => Err(format!("internal error: non-empty list has no first"))
+                            match l.first() {
+                                Some(me) => Err(format!("not a function: {}", pr_str(me))),
+                                None => {
+                                    Err("internal error: non-empty list has no first".to_string())
                                 }
-
                             }
                         }
-                    },
-                    _ => Err("internal error: eval_ast list => not list".to_string())
+                    }
+                    _ => Err("internal error: eval_ast list => not list".to_string()),
                 }
             }
-        },
-        _ => {
-            eval_ast(ast, env)
         }
+        _ => eval_ast(ast, env),
     }
 }
 
@@ -66,28 +61,24 @@ fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result.clone()),
-                None => Err(format!("symbol {} not found in environment", symbol))
+                None => Err(format!("symbol {} not found in environment", symbol)),
             }
+        }
+        MalExpression::List(list) => match list.into_iter().map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(MalExpression::List(collected)),
+            Err(e) => Err(e),
         },
-        MalExpression::List(list) => {
-            match list.into_iter().map(|x| EVAL(x, env)).collect() {
-                Ok(collected) => Ok(MalExpression::List(collected)),
-                Err(e) => Err(e)
-            }
-        },
-        MalExpression::Vector(vector) => {
-            match vector.into_iter().map(|x| EVAL(x, env)).collect() {
-                Ok(collected) => Ok(MalExpression::Vector(collected)),
-                Err(e) => Err(e)
-            }
+        MalExpression::Vector(vector) => match vector.into_iter().map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(MalExpression::Vector(collected)),
+            Err(e) => Err(e),
         },
         MalExpression::HashTable(hash_table) => {
             match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
                 Ok(collected) => Ok(MalExpression::HashTable(collected)),
-                Err(e) => Err(e)
+                Err(e) => Err(e),
             }
-        },
-        _ => Ok(ast)
+        }
+        _ => Ok(ast),
     }
 }
 
@@ -120,9 +111,8 @@ fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> MalRet {
     if let MalExpression::List(l) = args {
         match (&l[0], &l[1]) {
             (MalExpression::Int(a), MalExpression::Int(b)) => Ok(MalExpression::Int(func(*a, *b))),
-            _ => Err("invalid arguments to binary int function".to_string())
+            _ => Err("invalid arguments to binary int function".to_string()),
         }
-
     } else {
         Err("function called with non-list".to_string())
     }
@@ -134,7 +124,7 @@ fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> M
         for x in l {
             match x {
                 MalExpression::Int(x_int) => result = func(result, x_int),
-                _ => return Err("function called with non-int".to_string())
+                _ => return Err("function called with non-int".to_string()),
             }
         }
         Ok(MalExpression::Int(result))
@@ -146,10 +136,10 @@ fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> M
 fn init_env() -> Env {
     let mut env: Env = HashMap::new();
 
-    env.insert("+".to_string(), MalExpression::Function(|args| plus(args)));
-    env.insert("-".to_string(), MalExpression::Function(|args| minus(args)));
-    env.insert("*".to_string(), MalExpression::Function(|args| times(args)));
-    env.insert("/".to_string(), MalExpression::Function(|args| int_divide(args)));
+    env.insert("+".to_string(), MalExpression::Function(plus));
+    env.insert("-".to_string(), MalExpression::Function(minus));
+    env.insert("*".to_string(), MalExpression::Function(times));
+    env.insert("/".to_string(), MalExpression::Function(int_divide));
 
     env
 }

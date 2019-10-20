@@ -10,26 +10,24 @@ pub fn pr_str(expression: &MalExpression) -> String {
             } else {
                 "\"".to_owned()
                     + &s.replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
                     + "\""
             }
-        },
+        }
         MalExpression::List(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("({})", middle.join(" "))
-        },
+        }
         MalExpression::Vector(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("[{}]", middle.join(" "))
-        },
+        }
         MalExpression::HashTable(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
-        },
-        MalExpression::Function(_) => {
-            format!("<function>")
         }
+        MalExpression::Function(_) => "<function>".to_string(),
     }
 }
 
