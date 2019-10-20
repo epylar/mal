@@ -1,5 +1,6 @@
 use regex::Regex;
 use types::MalExpression;
+use types::MalExpression::{List, Symbol, Vector, HashTable, Int};
 use types::MalRet;
 #[derive(Debug)]
 struct Reader {
@@ -81,21 +82,21 @@ fn read_form(reader: &mut Reader) -> MalRet {
 
 fn read_list(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "(", ")") {
-        Ok(sequence) => Ok(MalExpression::List(sequence)),
+        Ok(sequence) => Ok(List(sequence)),
         Err(e) => Err(e),
     }
 }
 
 fn read_vector(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "[", "]") {
-        Ok(sequence) => Ok(MalExpression::Vector(sequence)),
+        Ok(sequence) => Ok(Vector(sequence)),
         Err(e) => Err(e),
     }
 }
 
 fn read_hash_table(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "{", "}") {
-        Ok(sequence) => Ok(MalExpression::HashTable(sequence)),
+        Ok(sequence) => Ok(HashTable(sequence)),
         Err(e) => Err(e),
     }
 }
@@ -105,8 +106,8 @@ fn read_quote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected '".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(MalExpression::List(vec![
-                MalExpression::Symbol("quote".to_string()),
+            Ok(x) => Ok(List(vec![
+                Symbol("quote".to_string()),
                 x,
             ])),
             Err(e) => Err(e),
@@ -119,8 +120,8 @@ fn read_quasiquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected `".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(MalExpression::List(vec![
-                MalExpression::Symbol("quasiquote".to_string()),
+            Ok(x) => Ok(List(vec![
+                Symbol("quasiquote".to_string()),
                 x,
             ])),
             Err(e) => Err(e),
@@ -133,8 +134,8 @@ fn read_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(MalExpression::List(vec![
-                MalExpression::Symbol("unquote".to_string()),
+            Ok(x) => Ok(List(vec![
+                Symbol("unquote".to_string()),
                 x,
             ])),
             Err(e) => Err(e),
@@ -147,8 +148,8 @@ fn read_splice_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~@".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(MalExpression::List(vec![
-                MalExpression::Symbol("splice-unquote".to_string()),
+            Ok(x) => Ok(List(vec![
+                Symbol("splice-unquote".to_string()),
                 x,
             ])),
             Err(e) => Err(e),
@@ -161,8 +162,8 @@ fn read_deref(reader: &mut Reader) -> MalRet {
         Err("internal error: expected @".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(MalExpression::List(vec![
-                MalExpression::Symbol("deref".to_string()),
+            Ok(x) => Ok(List(vec![
+                Symbol("deref".to_string()),
                 x,
             ])),
             Err(e) => Err(e),
@@ -262,7 +263,7 @@ fn read_atom(reader: &mut Reader) -> MalRet {
     match reader.next() {
         Some(token) => {
             if let Ok(number) = token.parse::<i32>() {
-                return Ok(MalExpression::Int(number));
+                return Ok(Int(number));
             }
             match token.chars().next() {
                 None => Err("internal error: empty token".to_string()),
@@ -274,7 +275,7 @@ fn read_atom(reader: &mut Reader) -> MalRet {
                     "\u{29e}{}",
                     token.chars().skip(1).collect::<String>()
                 ))),
-                Some(_) => Ok(MalExpression::Symbol(token.to_string())),
+                Some(_) => Ok(Symbol(token.to_string())),
             }
         }
         None => Err("EOF while reading atom".to_string()),

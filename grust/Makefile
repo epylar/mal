@@ -4,7 +4,7 @@ all: $(STEPS)
 
 dist: mal
 
-mal: step2_eval
+mal: step3_env
 	cp $< $@
 
 %: %.rs
@@ -14,10 +14,12 @@ mal: step2_eval
 STEP0_DEPS =
 STEP1_DEPS = $(STEP0_DEPS) reader.rs
 STEP2_DEPS = $(STEP1_DEPS)
+STEP3_DEPS = $(STEP2_DEPS)
 
 step0_repl: $(STEP0_DEPS)
 step1_read_print: $(STEP1_DEPS)
 step2_eval: $(STEP2_DEPS)
+step3_env: $(STEP3_DEPS)
 
 .PHONY: clean
 

@@ -1,9 +1,10 @@
 use types::MalExpression;
+use types::MalExpression::{List, Symbol, Vector, HashTable, Int, Function};
 
 pub fn pr_str(expression: &MalExpression) -> String {
     match expression {
-        MalExpression::Int(i) => i.to_string(),
-        MalExpression::Symbol(s) => s.to_string(),
+        Int(i) => i.to_string(),
+        Symbol(s) => s.to_string(),
         MalExpression::String(s) => {
             if s.starts_with("\u{29e}") {
                 format!(":{}", &s[2..])
@@ -15,19 +16,19 @@ pub fn pr_str(expression: &MalExpression) -> String {
                     + "\""
             }
         }
-        MalExpression::List(l) => {
+        List(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("({})", middle.join(" "))
         }
-        MalExpression::Vector(l) => {
+        Vector(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("[{}]", middle.join(" "))
         }
-        MalExpression::HashTable(l) => {
+        HashTable(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
-        MalExpression::Function(_) => "<function>".to_string(),
+        Function(_) => "<function>".to_string(),
     }
 }
 
@@ -38,6 +39,6 @@ mod tests {
 
     #[test]
     fn test_pr_str() {
-        assert_eq!(pr_str(&MalExpression::Int(1)), "1");
+        assert_eq!(pr_str(&Int(1)), "1");
     }
 }
