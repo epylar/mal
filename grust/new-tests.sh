@@ -4,5 +4,5 @@ set -e
 
 ( 
   cd ..
-  # make OPTIONAL=0 test^grust^step1 
+  make OPTIONAL=0 test^grust^step2
 )

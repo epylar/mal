@@ -1,10 +1,10 @@
-STEPS = step0_repl step1_read_print
+STEPS = step0_repl step1_read_print step2_eval
 
 all: $(STEPS)
 
 dist: mal
 
-mal: step1_read_print
+mal: step2_eval
 	cp $< $@
 
 %: %.rs
@@ -13,9 +13,11 @@ mal: step1_read_print
 
 STEP0_DEPS =
 STEP1_DEPS = $(STEP0_DEPS) reader.rs
+STEP2_DEPS = $(STEP1_DEPS)
 
 step0_repl: $(STEP0_DEPS)
 step1_read_print: $(STEP1_DEPS)
+step2_eval: $(STEP2_DEPS)
 
 .PHONY: clean
 
