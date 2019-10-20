@@ -1,6 +1,6 @@
 use types::MalExpression;
 
-pub(crate) fn pr_str(expression: &MalExpression) -> String {
+pub fn pr_str(expression: &MalExpression) -> String {
     match expression {
         MalExpression::Int(i) => i.to_string(),
         MalExpression::Symbol(s) => s.to_string(),
@@ -10,18 +10,21 @@ pub(crate) fn pr_str(expression: &MalExpression) -> String {
                     .replace("\"", "\\\"")
                     .replace("\n", "\\n")
                 + "\""
-        }
+        },
         MalExpression::List(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("({})", middle.join(" "))
-        }
+        },
         MalExpression::Vector(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("[{}]", middle.join(" "))
-        }
+        },
         MalExpression::HashTable(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
+        },
+        MalExpression::Function(l) => {
+            format!("<function>")
         }
     }
 }

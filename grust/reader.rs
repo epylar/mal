@@ -48,7 +48,7 @@ fn tokenize(line: &str) -> Vec<String> {
     vec
 }
 
-pub(crate) fn read_str(line: &str) -> Result<MalExpression, String> {
+pub fn read_str(line: &str) -> Result<MalExpression, String> {
     // call tokenize, create new Reader instance with tokens
     // call read_form with the Reader instance
     let tokenized = tokenize(line);

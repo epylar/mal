@@ -1,9 +1,10 @@
-#[derive(Debug)]
-pub(crate) enum MalExpression {
+#[derive(Debug, Clone)]
+pub enum MalExpression {
     Symbol(String),
     Int(i32),
     List(Vec<MalExpression>),
     String(String),
     Vector(Vec<MalExpression>),
-    HashTable(Vec<MalExpression>)
+    HashTable(Vec<MalExpression>),
+    Function(fn(MalExpression) -> Result<MalExpression, String>)
 }
