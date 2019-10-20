@@ -14,7 +14,6 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use types::MalExpression;
 use std::collections::HashMap;
-use itertools::fold;
 
 type Env = HashMap<String, MalExpression>;
 
@@ -25,7 +24,7 @@ fn READ(input: &str) -> Result<MalExpression, String> {
 
 #[allow(non_snake_case)]
 fn EVAL(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
-    match ast {
+    match ast.clone() {
         MalExpression::List(l) => {
             if l.is_empty() {
                 Ok(ast)
@@ -65,13 +64,25 @@ fn eval_ast(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
         MalExpression::Symbol(symbol) => {
             let get = env.get(&symbol);
             match get {
-                Some(result) => Ok(*result),
+                Some(result) => Ok(result.clone()),
                 None => Err(format!("symbol {} not found in environment", symbol))
             }
         },
         MalExpression::List(list) => {
             match list.into_iter().map(|x| EVAL(x, env)).collect() {
                 Ok(collected) => Ok(MalExpression::List(collected)),
+                Err(e) => Err(e)
+            }
+        },
+        MalExpression::Vector(vector) => {
+            match vector.into_iter().map(|x| EVAL(x, env)).collect() {
+                Ok(collected) => Ok(MalExpression::Vector(collected)),
+                Err(e) => Err(e)
+            }
+        },
+        MalExpression::HashTable(hash_table) => {
+            match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
+                Ok(collected) => Ok(MalExpression::HashTable(collected)),
                 Err(e) => Err(e)
             }
         },
@@ -89,15 +100,55 @@ fn rep(line: &str, env: &Env) -> Result<String, String> {
 }
 
 fn plus(args: MalExpression) -> Result<MalExpression, String> {
+    mal_int_fn(args, |a, b| a + b, 0)
+}
+
+fn minus(args: MalExpression) -> Result<MalExpression, String> {
+    mal_int_fn_binary(args, |a, b| a - b)
+}
+
+fn times(args: MalExpression) -> Result<MalExpression, String> {
+    mal_int_fn(args, |a, b| a * b, 1)
+}
+
+fn int_divide(args: MalExpression) -> Result<MalExpression, String> {
+    mal_int_fn_binary(args, |a, b| a / b)
+}
+
+fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> Result<MalExpression, String> {
     if let MalExpression::List(l) = args {
-        fold(l, 0, )
+        match (&l[0], &l[1]) {
+            (MalExpression::Int(a), MalExpression::Int(b)) => Ok(MalExpression::Int(func(*a, *b))),
+            _ => Err("invalid arguments to binary int function".to_string())
+        }
+
+    } else {
+        Err("function called with non-list".to_string())
+    }
+}
+
+fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> Result<MalExpression, String> {
+    if let MalExpression::List(l) = args {
+        let mut result = initial;
+        for x in l {
+            match x {
+                MalExpression::Int(x_int) => result = func(result, x_int),
+                _ => return Err("function called with non-int".to_string())
+            }
+        }
+        Ok(MalExpression::Int(result))
+    } else {
+        Err("function called with non-list".to_string())
     }
 }
 
 fn init_env() -> Env {
     let mut env: Env = HashMap::new();
 
-    env.insert("+".to_string(), MalExpression::Function(|a, b| a+b));
+    env.insert("+".to_string(), MalExpression::Function(|args| plus(args)));
+    env.insert("-".to_string(), MalExpression::Function(|args| minus(args)));
+    env.insert("*".to_string(), MalExpression::Function(|args| times(args)));
+    env.insert("/".to_string(), MalExpression::Function(|args| int_divide(args)));
 
     env
 }
@@ -142,6 +193,10 @@ mod tests {
     #[test]
     fn test_rep() {
         let env = init_env();
-        assert_eq!(rep("1", &init_env()).unwrap(), "1");
+        assert_eq!(rep("1", &env), Ok("1".to_string()));
+        assert_eq!(rep("(+ 1)", &env), Ok("1".to_string()));
+        assert_eq!(rep("(+ 1 2)", &env), Ok("3".to_string()));
+        assert_eq!(rep("(+ 1 2 3)", &env), Ok("6".to_string()));
+        assert_eq!(rep("\":a\"", &env), Ok("\":a\"".to_string()));
     }
 }

@@ -5,11 +5,15 @@ pub fn pr_str(expression: &MalExpression) -> String {
         MalExpression::Int(i) => i.to_string(),
         MalExpression::Symbol(s) => s.to_string(),
         MalExpression::String(s) => {
-            "\"".to_owned()
-                + &s.replace("\\", "\\\\")
+            if s.starts_with("\u{29e}") {
+                format!(":{}", &s[2..])
+            } else {
+                "\"".to_owned()
+                    + &s.replace("\\", "\\\\")
                     .replace("\"", "\\\"")
                     .replace("\n", "\\n")
-                + "\""
+                    + "\""
+            }
         },
         MalExpression::List(l) => {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
@@ -23,7 +27,7 @@ pub fn pr_str(expression: &MalExpression) -> String {
             let middle: Vec<String> = l.iter().map(pr_str).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
         },
-        MalExpression::Function(l) => {
+        MalExpression::Function(_) => {
             format!("<function>")
         }
     }

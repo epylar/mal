@@ -254,6 +254,7 @@ fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
                     Ok(s) => Ok(MalExpression::String(s)),
                     Err(e) => Err(e),
                 },
+                Some(':') => Ok(MalExpression::String(format!("\u{29e}{}", token.chars().skip(1).collect::<String>()))),
                 Some(_) => Ok(MalExpression::Symbol(token.to_string())),
             }
         }
