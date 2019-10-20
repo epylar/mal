@@ -1,6 +1,6 @@
 use regex::Regex;
 use types::MalExpression;
-use types::MalExpression::{List, Symbol, Vector, HashTable, Int};
+use types::MalExpression::{HashTable, Int, List, Symbol, Vector};
 use types::MalRet;
 #[derive(Debug)]
 struct Reader {
@@ -106,10 +106,7 @@ fn read_quote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected '".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![
-                Symbol("quote".to_string()),
-                x,
-            ])),
+            Ok(x) => Ok(List(vec![Symbol("quote".to_string()), x])),
             Err(e) => Err(e),
         }
     }
@@ -120,10 +117,7 @@ fn read_quasiquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected `".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![
-                Symbol("quasiquote".to_string()),
-                x,
-            ])),
+            Ok(x) => Ok(List(vec![Symbol("quasiquote".to_string()), x])),
             Err(e) => Err(e),
         }
     }
@@ -134,10 +128,7 @@ fn read_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![
-                Symbol("unquote".to_string()),
-                x,
-            ])),
+            Ok(x) => Ok(List(vec![Symbol("unquote".to_string()), x])),
             Err(e) => Err(e),
         }
     }
@@ -148,10 +139,7 @@ fn read_splice_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~@".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![
-                Symbol("splice-unquote".to_string()),
-                x,
-            ])),
+            Ok(x) => Ok(List(vec![Symbol("splice-unquote".to_string()), x])),
             Err(e) => Err(e),
         }
     }
@@ -162,10 +150,7 @@ fn read_deref(reader: &mut Reader) -> MalRet {
         Err("internal error: expected @".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![
-                Symbol("deref".to_string()),
-                x,
-            ])),
+            Ok(x) => Ok(List(vec![Symbol("deref".to_string()), x])),
             Err(e) => Err(e),
         }
     }

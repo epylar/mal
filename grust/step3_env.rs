@@ -13,8 +13,8 @@ use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::collections::HashMap;
-use types::MalExpression::{List, Symbol, Vector, HashTable, Function, Int};
 use types::MalExpression;
+use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
 use types::MalRet;
 
 type Env = HashMap<String, MalExpression>;
@@ -73,12 +73,10 @@ fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
             Ok(collected) => Ok(Vector(collected)),
             Err(e) => Err(e),
         },
-        HashTable(hash_table) => {
-            match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
-                Ok(collected) => Ok(HashTable(collected)),
-                Err(e) => Err(e),
-            }
-        }
+        HashTable(hash_table) => match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(HashTable(collected)),
+            Err(e) => Err(e),
+        },
         _ => Ok(ast),
     }
 }
