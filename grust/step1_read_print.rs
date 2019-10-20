@@ -7,24 +7,24 @@ use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use types::MalExpression;
+use types::MalRet;
 
 mod printer;
 mod reader;
 mod types;
 
 #[allow(non_snake_case)]
-fn READ(input: &str) -> Result<MalExpression, String> {
+fn READ(input: &str) -> MalRet {
     read_str(input)
 }
 
 #[allow(non_snake_case)]
-fn EVAL(form: Result<MalExpression, String>) -> Result<MalExpression, String> {
+fn EVAL(form: MalRet) -> MalRet {
     form
 }
 
 #[allow(non_snake_case)]
-fn PRINT(form: Result<MalExpression, String>) -> Result<String, String> {
+fn PRINT(form: MalRet) -> Result<String, String> {
     match form {
         Ok(actual_form) => Ok(pr_str(&actual_form)),
         Err(e) => Err(e),

@@ -13,17 +13,18 @@ use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use types::MalExpression;
+use types::MalRet;
 use std::collections::HashMap;
 
 type Env = HashMap<String, MalExpression>;
 
 #[allow(non_snake_case)]
-fn READ(input: &str) -> Result<MalExpression, String> {
+fn READ(input: &str) -> MalRet {
     read_str(input)
 }
 
 #[allow(non_snake_case)]
-fn EVAL(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
+fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
     match ast.clone() {
         MalExpression::List(l) => {
             if l.is_empty() {
@@ -59,7 +60,7 @@ fn EVAL(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
     }
 }
 
-fn eval_ast(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
+fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
     match ast {
         MalExpression::Symbol(symbol) => {
             let get = env.get(&symbol);
@@ -91,7 +92,7 @@ fn eval_ast(ast: MalExpression, env: &Env) -> Result<MalExpression, String> {
 }
 
 #[allow(non_snake_case)]
-fn PRINT(form: Result<MalExpression, String>) -> Result<String, String> {
+fn PRINT(form: MalRet) -> Result<String, String> {
     Ok(pr_str(&form?))
 }
 
@@ -99,23 +100,23 @@ fn rep(line: &str, env: &Env) -> Result<String, String> {
     PRINT(EVAL(READ(line)?, env))
 }
 
-fn plus(args: MalExpression) -> Result<MalExpression, String> {
+fn plus(args: MalExpression) -> MalRet {
     mal_int_fn(args, |a, b| a + b, 0)
 }
 
-fn minus(args: MalExpression) -> Result<MalExpression, String> {
+fn minus(args: MalExpression) -> MalRet {
     mal_int_fn_binary(args, |a, b| a - b)
 }
 
-fn times(args: MalExpression) -> Result<MalExpression, String> {
+fn times(args: MalExpression) -> MalRet {
     mal_int_fn(args, |a, b| a * b, 1)
 }
 
-fn int_divide(args: MalExpression) -> Result<MalExpression, String> {
+fn int_divide(args: MalExpression) -> MalRet {
     mal_int_fn_binary(args, |a, b| a / b)
 }
 
-fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> Result<MalExpression, String> {
+fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> MalRet {
     if let MalExpression::List(l) = args {
         match (&l[0], &l[1]) {
             (MalExpression::Int(a), MalExpression::Int(b)) => Ok(MalExpression::Int(func(*a, *b))),
@@ -127,7 +128,7 @@ fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> Result<M
     }
 }
 
-fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> Result<MalExpression, String> {
+fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> MalRet {
     if let MalExpression::List(l) = args {
         let mut result = initial;
         for x in l {

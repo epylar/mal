@@ -1,4 +1,5 @@
 use regex::{Regex};
+use types::MalRet;
 use types::MalExpression;
 #[derive(Debug)]
 struct Reader {
@@ -48,7 +49,7 @@ fn tokenize(line: &str) -> Vec<String> {
     vec
 }
 
-pub fn read_str(line: &str) -> Result<MalExpression, String> {
+pub fn read_str(line: &str) -> MalRet {
     // call tokenize, create new Reader instance with tokens
     // call read_form with the Reader instance
     let tokenized = tokenize(line);
@@ -59,7 +60,7 @@ pub fn read_str(line: &str) -> Result<MalExpression, String> {
     read_form(&mut reader)
 }
 
-fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_form(reader: &mut Reader) -> MalRet {
     //    println!("read_form: {}", format!("{:?}", reader));
     let peek = reader.peek();
     match peek {
@@ -78,28 +79,28 @@ fn read_form(reader: &mut Reader) -> Result<MalExpression, String> {
     }
 }
 
-fn read_list(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_list(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "(", ")") {
         Ok(sequence) => Ok(MalExpression::List(sequence)),
         Err(e) => Err(e),
     }
 }
 
-fn read_vector(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_vector(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "[", "]") {
         Ok(sequence) => Ok(MalExpression::Vector(sequence)),
         Err(e) => Err(e),
     }
 }
 
-fn read_hash_table(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_hash_table(reader: &mut Reader) -> MalRet {
     match read_sequence(reader, "{", "}") {
         Ok(sequence) => Ok(MalExpression::HashTable(sequence)),
         Err(e) => Err(e),
     }
 }
 
-fn read_quote(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_quote(reader: &mut Reader) -> MalRet {
     if reader.next() != Some("'".to_string()) {
         Err("internal error: expected '".to_string())
     } else {
@@ -110,7 +111,7 @@ fn read_quote(reader: &mut Reader) -> Result<MalExpression, String> {
     }
 }
 
-fn read_quasiquote(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_quasiquote(reader: &mut Reader) -> MalRet {
     if reader.next() != Some("`".to_string()) {
         Err("internal error: expected `".to_string())
     } else {
@@ -121,7 +122,7 @@ fn read_quasiquote(reader: &mut Reader) -> Result<MalExpression, String> {
     }
 }
 
-fn read_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_unquote(reader: &mut Reader) -> MalRet {
     if reader.next() != Some("~".to_string()) {
         Err("internal error: expected ~".to_string())
     } else {
@@ -132,7 +133,7 @@ fn read_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
     }
 }
 
-fn read_splice_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_splice_unquote(reader: &mut Reader) -> MalRet {
     if reader.next() != Some("~@".to_string()) {
         Err("internal error: expected ~@".to_string())
     } else {
@@ -143,7 +144,7 @@ fn read_splice_unquote(reader: &mut Reader) -> Result<MalExpression, String> {
     }
 }
 
-fn read_deref(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_deref(reader: &mut Reader) -> MalRet {
     if reader.next() != Some("@".to_string()) {
         Err("internal error: expected @".to_string())
     } else {
@@ -242,7 +243,7 @@ fn unescape_string(string: &str) -> Result<String, String> {
     }
 }
 
-fn read_atom(reader: &mut Reader) -> Result<MalExpression, String> {
+fn read_atom(reader: &mut Reader) -> MalRet {
     match reader.next() {
         Some(token) => {
             if let Ok(number) = token.parse::<i32>() {
