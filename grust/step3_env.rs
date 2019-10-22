@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use types::MalExpression;
 use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
 use types::MalRet;
+use std::rc::Rc;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -20,7 +21,7 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
+fn EVAL(ast: MalExpression, env: &mut Env) -> MalRet {
     println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
         List(l) => {
@@ -29,30 +30,36 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
             } else {
                 let evaled = eval_ast(ast, env)?;
                 match evaled {
-                    List(el) => {
-                        if el.is_empty() {
-                            Err("internal error: eval_ast non empty list => empty list".to_string())
-                        } else if let Some(Function(f)) = el.first() {
-                            let rest = &el[1..];
-                            f(List(rest.to_vec()))
-                        } else {
-                            match l.first() {
-                                Some(me) => Err(format!("not a function: {}", pr_str(me))),
-                                None => {
-                                    Err("internal error: non-empty list has no first".to_string())
+                    List(evaled_vec) => {
+                        match evaled_vec.first() {
+                            None => Err("internal error: eval_ast non empty list => empty list".to_string()),
+                            Some(Function(f)) => {
+                                let rest = &evaled_vec[1..];
+                                f(List(Rc::new(rest.to_vec())))
+                            },
+                            Some(Symbol(sym)) if sym == "def!" => {
+                                let key = &evaled_vec[1];
+                                let value = &evaled_vec[2];
+                                match key {
+                                    Symbol(key_symbol) => {
+                                        env.set(&key_symbol, *value);
+                                        Ok(*value)
+                                    },
+                                    _ => Err(format!("attempting to def! with a non-symbol: {}", pr_str(&key)))
                                 }
                             }
+                            Some(other) => Err(format!("not a function or special symbol: {}", pr_str(other)))
                         }
                     }
                     _ => Err("internal error: eval_ast list => not list".to_string()),
                 }
             }
-        }
+        },
         _ => eval_ast(ast, env),
     }
 }
 
-fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
+fn eval_ast(ast: MalExpression, env: &mut Env) -> MalRet {
     println!("eval_ast: {}", pr_str(&ast));
     match ast {
         Symbol(symbol) => {
@@ -63,15 +70,15 @@ fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
             }
         }
         List(list) => match list.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(List(collected)),
+            Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
         Vector(vector) => match vector.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(Vector(collected)),
+            Ok(collected) => Ok(Vector(Rc::new(collected))),
             Err(e) => Err(e),
         },
         HashTable(hash_table) => match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(HashTable(collected)),
+            Ok(collected) => Ok(HashTable(Rc::new(collected))),
             Err(e) => Err(e),
         },
         _ => Ok(ast),
@@ -83,7 +90,7 @@ fn PRINT(form: MalRet) -> Result<String, String> {
     Ok(pr_str(&form?))
 }
 
-fn rep(line: &str, env: &Env) -> Result<String, String> {
+fn rep(line: &str, env: &mut Env) -> Result<String, String> {
     PRINT(EVAL(READ(line)?, env))
 }
 
@@ -143,7 +150,7 @@ fn init_env() -> Env {
 fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
-    let env = init_env();
+    let mut env = init_env();
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
@@ -156,7 +163,7 @@ fn main() {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
                 if !line.is_empty() {
-                    match rep(&line.to_owned(), &env) {
+                    match rep(&line.to_owned(), &mut env) {
                         Ok(result) => println!("{}", result),
                         Err(e) => println!("error: {}", e),
                     }
@@ -179,9 +186,9 @@ mod tests {
 
     #[test]
     fn test_rep() {
-        let env = init_env();
+        let mut env = init_env();
         //        assert_eq!(rep("1", &env), Ok("1".to_string()));
-        assert_eq!(rep("(+ 1)", &env), Ok("1".to_string()));
+        assert_eq!(rep("(+ 1)", &mut env), Ok("1".to_string()));
         //        assert_eq!(rep("(+ 1 2)", &env), Ok("3".to_string()));
         //        assert_eq!(rep("(+ 1 2 3)", &env), Ok("6".to_string()));
         //        assert_eq!(rep("\":a\"", &env), Ok("\":a\"".to_string()));

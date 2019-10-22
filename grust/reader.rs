@@ -3,6 +3,7 @@ use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector};
 use crate::types::MalRet;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::rc::Rc;
 
 #[derive(Debug)]
 struct Reader {
@@ -111,7 +112,7 @@ fn read_quote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected '".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![Symbol("quote".to_string()), x])),
+            Ok(x) => Ok(List(Rc::new(vec![Symbol("quote".to_string()), x]))),
             Err(e) => Err(e),
         }
     }
@@ -122,7 +123,7 @@ fn read_quasiquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected `".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![Symbol("quasiquote".to_string()), x])),
+            Ok(x) => Ok(List(Rc::new(vec![Symbol("quasiquote".to_string()), x]))),
             Err(e) => Err(e),
         }
     }
@@ -133,7 +134,7 @@ fn read_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![Symbol("unquote".to_string()), x])),
+            Ok(x) => Ok(List(Rc::new(vec![Symbol("unquote".to_string()), x]))),
             Err(e) => Err(e),
         }
     }
@@ -144,7 +145,7 @@ fn read_splice_unquote(reader: &mut Reader) -> MalRet {
         Err("internal error: expected ~@".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![Symbol("splice-unquote".to_string()), x])),
+            Ok(x) => Ok(List(Rc::new(vec![Symbol("splice-unquote".to_string()), x]))),
             Err(e) => Err(e),
         }
     }
@@ -155,7 +156,7 @@ fn read_deref(reader: &mut Reader) -> MalRet {
         Err("internal error: expected @".to_string())
     } else {
         match read_form(reader) {
-            Ok(x) => Ok(List(vec![Symbol("deref".to_string()), x])),
+            Ok(x) => Ok(List(Rc::new(vec![Symbol("deref".to_string()), x]))),
             Err(e) => Err(e),
         }
     }
@@ -165,7 +166,7 @@ fn read_sequence(
     reader: &mut Reader,
     opening_token: &str,
     closing_token: &str,
-) -> Result<Vec<MalExpression>, String> {
+) -> Result<Rc<Vec<MalExpression>>, String> {
     //    println!("read_sequence: {}", format!("{:?}", reader));
     let mut list_vec: Vec<MalExpression> = vec![];
     match reader.peek() {
@@ -188,7 +189,7 @@ fn read_sequence(
             Some(token) => {
                 if token == closing_token {
                     reader.next(); // swallow closing token
-                    return Ok(list_vec);
+                    return Ok(Rc::new(list_vec));
                 } else {
                     match read_form(reader) {
                         Ok(expression) => list_vec.push(expression),

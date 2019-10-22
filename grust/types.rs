@@ -1,11 +1,13 @@
+use std::rc::Rc;
+
 #[derive(Debug, Clone)]
 pub enum MalExpression {
     Symbol(String),
     Int(i32),
-    List(Vec<MalExpression>),
+    List(Rc<Vec<MalExpression>>),
     String(String),
-    Vector(Vec<MalExpression>),
-    HashTable(Vec<MalExpression>),
+    Vector(Rc<Vec<MalExpression>>),
+    HashTable(Rc<Vec<MalExpression>>),
     Function(fn(MalExpression) -> MalRet),
 }
 
