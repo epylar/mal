@@ -1,6 +1,6 @@
-extern crate regex;
-extern crate lazy_static;
 extern crate itertools;
+extern crate lazy_static;
+extern crate regex;
 extern crate rustyline;
 
 pub mod printer;

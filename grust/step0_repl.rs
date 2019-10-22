@@ -35,7 +35,7 @@ fn main() {
             Ok(line) => {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
-                if line.len() > 0 {
+                if !line.is_empty() {
                     println!("{}", rep(&line.as_ref()));
                 }
             }

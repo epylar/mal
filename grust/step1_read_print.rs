@@ -9,7 +9,7 @@ use types::MalRet;
 
 pub mod printer;
 pub mod reader;
-mod types;
+pub mod types;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -71,7 +71,10 @@ mod tests {
     #[test]
     fn test_rep() {
         assert_eq!(rep("(1 2 3)").unwrap(), "(1 2 3)");
-        assert_eq!(rep("(1 2\r\n"), Err("EOF while reading sequence".to_string()));
+        assert_eq!(
+            rep("(1 2\r\n"),
+            Err("EOF while reading sequence".to_string())
+        );
         assert_eq!(rep("(1 \"a\" 2 3 (c))").unwrap(), "(1 \"a\" 2 3 (c))");
         assert_eq!(rep("1").unwrap(), "1");
         assert_eq!(rep("a").unwrap(), "a");

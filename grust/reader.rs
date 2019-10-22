@@ -1,8 +1,8 @@
-use regex::Regex;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector};
 use crate::types::MalRet;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 #[derive(Debug)]
 struct Reader {
@@ -34,8 +34,6 @@ impl Reader {
     }
 }
 
-
-
 fn tokenize(line: &str) -> Vec<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
@@ -49,7 +47,7 @@ fn tokenize(line: &str) -> Vec<String> {
         if let Some(x) = c.name("token") {
             let match_str = x.as_str();
             if match_str != "" && match_str != "\r" && match_str != "\n" && match_str != "\r\n" {
-//                println!("TOKEN: {}", x.as_str())
+                //                println!("TOKEN: {}", x.as_str())
                 vec.push(x.as_str().to_string());
             }
         }
