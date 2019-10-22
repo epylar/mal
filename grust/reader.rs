@@ -47,7 +47,11 @@ fn tokenize(line: &str) -> Vec<String> {
     let re: &Regex = &RE; // helps IDE autocompletion
     for c in re.captures_iter(line) {
         if let Some(x) = c.name("token") {
-            vec.push(x.as_str().to_string())
+            let match_str = x.as_str();
+            if match_str != "" && match_str != "\r" && match_str != "\n" && match_str != "\r\n" {
+//                println!("TOKEN: {}", x.as_str())
+                vec.push(x.as_str().to_string());
+            }
         }
     }
     vec

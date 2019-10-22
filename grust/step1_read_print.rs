@@ -71,6 +71,7 @@ mod tests {
     #[test]
     fn test_rep() {
         assert_eq!(rep("(1 2 3)").unwrap(), "(1 2 3)");
+        assert_eq!(rep("(1 2\r\n"), Err("blah".to_string()));
         assert_eq!(rep("(1 \"a\" 2 3 (c))").unwrap(), "(1 \"a\" 2 3 (c))");
         assert_eq!(rep("1").unwrap(), "1");
         assert_eq!(rep("a").unwrap(), "a");
