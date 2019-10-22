@@ -1,6 +1,4 @@
 extern crate regex;
-#[macro_use]
-extern crate lazy_static;
 extern crate rustyline;
 
 use printer::pr_str;
@@ -9,8 +7,8 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use types::MalRet;
 
-mod printer;
-mod reader;
+pub mod printer;
+pub mod reader;
 mod types;
 
 #[allow(non_snake_case)]

@@ -1,7 +1,9 @@
 use regex::Regex;
-use types::MalExpression;
-use types::MalExpression::{HashTable, Int, List, Symbol, Vector};
-use types::MalRet;
+use crate::types::MalExpression;
+use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector};
+use crate::types::MalRet;
+use lazy_static::lazy_static;
+
 #[derive(Debug)]
 struct Reader {
     tokens: Vec<String>,
@@ -32,7 +34,8 @@ impl Reader {
     }
 }
 
-#[allow(deprecated)]
+
+
 fn tokenize(line: &str) -> Vec<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(

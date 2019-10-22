@@ -1,23 +1,18 @@
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
-extern crate itertools;
-extern crate rustyline;
-
 mod printer;
 mod reader;
-mod types;
+pub mod types;
+mod env;
 
 use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use std::collections::HashMap;
 use types::MalExpression;
 use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
 use types::MalRet;
+use std::collections::HashMap;
+use crate::env::Env;
 
-type Env = HashMap<String, MalExpression>;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -133,12 +128,12 @@ fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> M
 }
 
 fn init_env() -> Env {
-    let mut env: Env = HashMap::new();
+    let mut env = Env::new(None, HashMap::new());
 
-    env.insert("+".to_string(), Function(plus));
-    env.insert("-".to_string(), Function(minus));
-    env.insert("*".to_string(), Function(times));
-    env.insert("/".to_string(), Function(int_divide));
+    env.set("+".to_string(), Function(plus));
+    env.set("-".to_string(), Function(minus));
+    env.set("*".to_string(), Function(times));
+    env.set("/".to_string(), Function(int_divide));
 
     env
 }

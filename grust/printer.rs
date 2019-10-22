@@ -1,5 +1,5 @@
-use types::MalExpression;
-use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
+use crate::types::MalExpression;
+use crate::types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
 
 pub fn pr_str(expression: &MalExpression) -> String {
     match expression {
