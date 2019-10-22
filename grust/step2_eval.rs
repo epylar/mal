@@ -3,9 +3,9 @@ extern crate lazy_static;
 extern crate itertools;
 extern crate rustyline;
 
-mod printer;
-mod reader;
-mod types;
+pub mod printer;
+pub mod reader;
+pub mod types;
 
 use printer::pr_str;
 use reader::read_str;

@@ -1,7 +1,7 @@
-mod printer;
-mod reader;
+pub mod printer;
+pub mod reader;
 pub mod types;
-mod env;
+pub mod env;
 
 use printer::pr_str;
 use reader::read_str;
