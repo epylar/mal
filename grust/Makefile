@@ -11,7 +11,7 @@ mal: step3_env
 	cargo build --release --bin $*
 	cp target/release/$* $@
 
-STEP0_DEPS =
+STEP0_DEPS = Cargo.toml
 STEP1_DEPS = $(STEP0_DEPS) reader.rs types.rs printer.rs
 STEP2_DEPS = $(STEP1_DEPS)
 STEP3_DEPS = $(STEP2_DEPS) env.rs
