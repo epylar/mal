@@ -1,7 +1,7 @@
 use crate::types::MalExpression;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Env {
     outer: Option<Box<Env>>,
     data: HashMap<String, MalExpression>,

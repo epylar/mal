@@ -44,7 +44,16 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                             pr_str(&key)
                         )),
                     }
-                }
+                },
+                Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
+                    (Some(List(l1)), Some(l2)) |
+                    (Some(Vector(l1)), Some(l2)) => {
+                        let newenv_data = HashMap::new(); // FIXME: populate
+                        let mut newenv = Env::new(Some(Box::new(env.clone())), newenv_data);
+                        EVAL(l2, &mut newenv)
+                    },
+                    _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
+                },
                 Symbol(_) => match EVAL(l0, env) {
                     Ok(Function(f)) => {
                         let rest_evaled = eval_ast(&List(Rc::new((&l[1..]).to_vec())), env)?;
