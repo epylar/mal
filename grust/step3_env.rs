@@ -22,7 +22,7 @@ fn READ(input: &str) -> MalRet {
 
 #[allow(non_snake_case)]
 fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
-    //    println!("EVAL: {}", pr_str(&ast));
+//        println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
         List(l) => {
             if l.is_empty() {
@@ -37,7 +37,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                     match key {
                         Symbol(key_symbol) => {
                             env.set(&key_symbol, value.clone());
-                            Ok(value.clone())
+                            Ok(value)
                         }
                         _ => Err(format!(
                             "attempting to def! with a non-symbol: {}",
@@ -48,8 +48,15 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) |
                     (Some(Vector(l1)), Some(l2)) => {
-                        let newenv_data = HashMap::new(); // FIXME: populate
-                        let mut newenv = Env::new(Some(Box::new(env.clone())), newenv_data);
+                        let mut newenv = Env::new(Some(Box::new(env.clone())), HashMap::new());
+                        for chunk in l1.chunks(2) {
+                            if let Symbol(l_sym) = &chunk[0] {
+                                let l_evaled_val = EVAL(&chunk[1], &mut newenv)?;
+                                newenv.set(l_sym, l_evaled_val);
+                            } else {
+                                return Err(format!("let* sub-argument not a symbol: {}", pr_str(&chunk[0])))
+                            }
+                        }
                         EVAL(l2, &mut newenv)
                     },
                     _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
@@ -70,7 +77,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
 }
 
 fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
-    //    println!("eval_ast: {}", pr_str(&ast));
+//    println!("eval_ast: {}", pr_str(&ast));
     match ast.clone() {
         Symbol(symbol) => {
             let get = env.get(&symbol);
@@ -202,10 +209,16 @@ mod tests {
     #[test]
     fn test_rep() {
         let mut env = init_env();
-        //        assert_eq!(rep("1", &env), Ok("1".to_string()));
+        assert_eq!(rep("1", &mut env), Ok("1".to_string()));
         assert_eq!(rep("(+ 1)", &mut env), Ok("1".to_string()));
-        //        assert_eq!(rep("(+ 1 2)", &env), Ok("3".to_string()));
-        //        assert_eq!(rep("(+ 1 2 3)", &env), Ok("6".to_string()));
-        //        assert_eq!(rep("\":a\"", &env), Ok("\":a\"".to_string()));
+        assert_eq!(rep("(+ 1 2)", &mut env), Ok("3".to_string()));
+        assert_eq!(rep("(+ 1 2 3)", &mut env), Ok("6".to_string()));
+        assert_eq!(rep("\":a\"", &mut env), Ok("\":a\"".to_string()));
+    }
+
+    #[test]
+    fn test_let() {
+        let mut env = init_env();
+        assert_eq!(rep("(let* (p (+ 2 3) q (+ 2 p)) (+ p q))", &mut env), Ok("12".to_string()));
     }
 }
