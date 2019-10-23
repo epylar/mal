@@ -12,6 +12,7 @@ use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::collections::HashMap;
+use std::rc::Rc;
 use types::MalExpression;
 use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
 use types::MalRet;
@@ -25,30 +26,23 @@ fn READ(input: &str) -> MalRet {
 
 #[allow(non_snake_case)]
 fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
+    //    println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
         List(l) => {
             if l.is_empty() {
-                Ok(ast)
-            } else {
-                let evaled = eval_ast(ast, env)?;
-                match evaled {
-                    List(el) => {
-                        if el.is_empty() {
-                            Err("internal error: eval_ast non empty list => empty list".to_string())
-                        } else if let Some(Function(f)) = el.first() {
-                            let rest = &el[1..];
-                            f(List(rest.to_vec()))
-                        } else {
-                            match l.first() {
-                                Some(me) => Err(format!("not a function: {}", pr_str(me))),
-                                None => {
-                                    Err("internal error: non-empty list has no first".to_string())
-                                }
-                            }
-                        }
+                return Ok(ast);
+            }
+            let l0 = &l[0];
+            match l0 {
+                Symbol(_) => match EVAL(l0.clone(), env) {
+                    Ok(Function(f)) => {
+                        let rest_evaled = eval_ast(List(Rc::new((&l[1..]).to_vec())), env)?;
+                        f(rest_evaled)
                     }
-                    _ => Err("internal error: eval_ast list => not list".to_string()),
-                }
+                    Err(e) => Err(e),
+                    Ok(other) => Err(format!("Not a function: {}", pr_str(&other))),
+                },
+                other => Err(format!("not a symbol: {}", pr_str(other))),
             }
         }
         _ => eval_ast(ast, env),
@@ -56,6 +50,7 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
 }
 
 fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
+    //    println!("eval_ast: {}", pr_str(&ast));
     match ast {
         Symbol(symbol) => {
             let get = env.get(&symbol);
@@ -64,16 +59,16 @@ fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
-        List(list) => match list.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(List(collected)),
+        List(list) => match iterate_rc_vec(list).map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        Vector(vector) => match vector.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(Vector(collected)),
+        Vector(vector) => match iterate_rc_vec(vector).map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(Vector(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        HashTable(hash_table) => match hash_table.into_iter().map(|x| EVAL(x, env)).collect() {
-            Ok(collected) => Ok(HashTable(collected)),
+        HashTable(hash_table) => match iterate_rc_vec(hash_table).map(|x| EVAL(x, env)).collect() {
+            Ok(collected) => Ok(HashTable(Rc::new(collected))),
             Err(e) => Err(e),
         },
         _ => Ok(ast),
@@ -116,10 +111,15 @@ fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> MalRet {
     }
 }
 
+fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpression> {
+    let len = data.len();
+    (0..len).map(move |i| data[i].clone())
+}
+
 fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> MalRet {
     if let List(l) = args {
         let mut result = initial;
-        for x in l {
+        for x in iterate_rc_vec(l) {
             match x {
                 Int(x_int) => result = func(result, x_int),
                 _ => return Err("function called with non-int".to_string()),

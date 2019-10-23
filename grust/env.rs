@@ -9,10 +9,7 @@ pub struct Env {
 
 impl Env {
     pub fn new(outer: Option<Box<Env>>, data: HashMap<String, MalExpression>) -> Env {
-        Env {
-            outer,
-            data,
-        }
+        Env { outer, data }
     }
 
     pub fn set(&mut self, key: &str, val: MalExpression) {
