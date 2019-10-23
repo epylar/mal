@@ -21,18 +21,19 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(ast: MalExpression, env: &mut Env) -> MalRet {
+fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
     //    println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
         List(l) => {
             if l.is_empty() {
-                return Ok(ast);
+                return Ok(ast.clone());
             }
             let l0 = &l[0];
             match l0 {
                 Symbol(sym) if sym == "def!" => {
-                    let key = &l[1]; // FIXME: does this panic for short lists?
-                    let value = &l[2];
+                    if l.len() != 3 { return Err("def! requires exactly 2 arguments".to_string()) }
+                    let key = &l[1];
+                    let value = EVAL(&l[2], env)?;
                     match key {
                         Symbol(key_symbol) => {
                             env.set(&key_symbol, value.clone());
@@ -44,9 +45,9 @@ fn EVAL(ast: MalExpression, env: &mut Env) -> MalRet {
                         )),
                     }
                 }
-                Symbol(_) => match EVAL(l0.clone(), env) {
+                Symbol(_) => match EVAL(l0, env) {
                     Ok(Function(f)) => {
-                        let rest_evaled = eval_ast(List(Rc::new((&l[1..]).to_vec())), env)?;
+                        let rest_evaled = eval_ast(&List(Rc::new((&l[1..]).to_vec())), env)?;
                         f(rest_evaled)
                     }
                     Err(e) => Err(e),
@@ -55,13 +56,13 @@ fn EVAL(ast: MalExpression, env: &mut Env) -> MalRet {
                 other => Err(format!("not a symbol: {}", pr_str(other))),
             }
         }
-        _ => eval_ast(ast, env),
+        _ => eval_ast(&ast, env),
     }
 }
 
-fn eval_ast(ast: MalExpression, env: &mut Env) -> MalRet {
+fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
     //    println!("eval_ast: {}", pr_str(&ast));
-    match ast {
+    match ast.clone() {
         Symbol(symbol) => {
             let get = env.get(&symbol);
             match get {
@@ -69,19 +70,19 @@ fn eval_ast(ast: MalExpression, env: &mut Env) -> MalRet {
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
-        List(list) => match iterate_rc_vec(list).map(|x| EVAL(x, env)).collect() {
+        List(list) => match iterate_rc_vec(list).map(|x| EVAL(&x, env)).collect() {
             Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        Vector(vector) => match iterate_rc_vec(vector).map(|x| EVAL(x, env)).collect() {
+        Vector(vector) => match iterate_rc_vec(vector).map(|x| EVAL(&x, env)).collect() {
             Ok(collected) => Ok(Vector(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        HashTable(hash_table) => match iterate_rc_vec(hash_table).map(|x| EVAL(x, env)).collect() {
+        HashTable(hash_table) => match iterate_rc_vec(hash_table).map(|x| EVAL(&x, env)).collect() {
             Ok(collected) => Ok(HashTable(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        _ => Ok(ast),
+        _ => Ok(ast.clone()),
     }
 }
 
@@ -91,7 +92,7 @@ fn PRINT(form: MalRet) -> Result<String, String> {
 }
 
 fn rep(line: &str, env: &mut Env) -> Result<String, String> {
-    PRINT(EVAL(READ(line)?, env))
+    PRINT(EVAL(&READ(line)?, env))
 }
 
 fn plus(args: MalExpression) -> MalRet {
