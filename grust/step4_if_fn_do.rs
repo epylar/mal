@@ -11,7 +11,7 @@ use rustyline::Editor;
 use std::collections::HashMap;
 use std::rc::Rc;
 use types::MalExpression;
-use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
+use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector, Nil};
 use types::MalRet;
 
 #[allow(non_snake_case)]
@@ -24,52 +24,19 @@ fn READ(input: &str) -> MalRet {
 fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
     //        println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
-        List(l) => {
-            if l.is_empty() {
+        List(forms) => {
+            if forms.is_empty() {
                 return Ok(ast.clone());
             }
-            let l0 = &l[0];
-            match l0 {
-                Symbol(sym) if sym == "def!" => {
-                    if l.len() != 3 {
-                        return Err("def! requires exactly 2 arguments".to_string());
-                    }
-                    let key = &l[1];
-                    let value = EVAL(&l[2], env)?;
-                    match key {
-                        Symbol(key_symbol) => {
-                            env.set(&key_symbol, value.clone());
-                            Ok(value)
-                        }
-                        _ => Err(format!(
-                            "attempting to def! with a non-symbol: {}",
-                            pr_str(&key)
-                        )),
-                    }
-                }
-                Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
-                    (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
-                        let mut newenv = Env::new(Some(Box::new(env.clone())), HashMap::new());
-                        for chunk in l1.chunks(2) {
-                            if let Symbol(l_sym) = &chunk[0] {
-                                let l_evaled_val = EVAL(&chunk[1], &mut newenv)?;
-                                newenv.set(l_sym, l_evaled_val);
-                            } else {
-                                return Err(format!(
-                                    "let* sub-argument not a symbol: {}",
-                                    pr_str(&chunk[0])
-                                ));
-                            }
-                        }
-                        EVAL(l2, &mut newenv)
-                    }
-                    _ => {
-                        Err("let* needs 2 arguments; first should be a list or vector".to_string())
-                    }
-                },
-                Symbol(_) => match EVAL(l0, env) {
+            let form0 = &forms[0];
+            let rest_forms = &forms[1..];
+            match form0 {
+                Symbol(sym) if sym == "def!" => handle_def(rest_forms.to_vec(), env),
+                Symbol(sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
+                Symbol(sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
+                Symbol(_) => match EVAL(form0, env) {
                     Ok(Function(f)) => {
-                        let rest_evaled = eval_ast(&List(Rc::new((&l[1..]).to_vec())), env)?;
+                        let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
                         f(rest_evaled)
                     }
                     Err(e) => Err(e),
@@ -80,6 +47,50 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
         }
         _ => eval_ast(&ast, env),
     }
+}
+
+fn handle_let(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
+            let mut newenv = Env::new(Some(Box::new(env.clone())), HashMap::new());
+            for chunk in f0.chunks(2) {
+                if let Symbol(key) = &chunk[0] {
+                    let val = EVAL(&chunk[1], &mut newenv)?;
+                    newenv.set(key, val);
+                } else {
+                    return Err(format!(
+                        "let* sub-argument not a symbol: {}",
+                        pr_str(&chunk[0])
+                    ));
+                }
+            }
+            EVAL(f1, &mut newenv)
+        }
+        _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
+    }
+}
+
+fn handle_def(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(Symbol(f0)), Some(f1)) => {
+            let key = f0;
+            let value = EVAL(f1, env)?;
+            env.set(key, value.clone());
+            Ok(value)
+        },
+        _ => Err("def! requires 2 arguments; first argument should be a symbol".to_string())
+    }
+}
+
+fn handle_do(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
+    let mut evaled_x = Ok(Nil());
+    for x in forms {
+        evaled_x = EVAL(&x, env);
+        if let Err(_) = evaled_x {
+            return evaled_x
+        }
+    }
+    evaled_x
 }
 
 fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
@@ -215,21 +226,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rep() {
-        let mut env = init_env();
-        assert_eq!(rep("1", &mut env), Ok("1".to_string()));
-        assert_eq!(rep("(+ 1)", &mut env), Ok("1".to_string()));
-        assert_eq!(rep("(+ 1 2)", &mut env), Ok("3".to_string()));
-        assert_eq!(rep("(+ 1 2 3)", &mut env), Ok("6".to_string()));
-        assert_eq!(rep("\":a\"", &mut env), Ok("\":a\"".to_string()));
-    }
-
-    #[test]
-    fn test_let() {
+    fn test_do() {
         let mut env = init_env();
         assert_eq!(
-            rep("(let* (p (+ 2 3) q (+ 2 p)) (+ p q))", &mut env),
-            Ok("12".to_string())
+            rep("(do 1 2 3)", &mut env),
+            Ok("3".to_string())
+        );
+        assert_eq!(
+            rep("(do 2)", &mut env),
+            Ok("2".to_string())
+        );
+        assert_eq!(
+            rep("(do)", &mut env),
+            Ok("nil".to_string())
+        );
+        assert_eq!(
+            rep("(do 4 (+ 1 2))", &mut env),
+            Ok("3".to_string())
         );
     }
 }

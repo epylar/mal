@@ -1,5 +1,5 @@
 use crate::types::MalExpression;
-use crate::types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
+use crate::types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector, Nil};
 
 pub fn pr_str(expression: &MalExpression) -> String {
     match expression {
@@ -29,6 +29,7 @@ pub fn pr_str(expression: &MalExpression) -> String {
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
         Function(_) => "<function>".to_string(),
+        Nil() => "nil".to_string()
     }
 }
 

@@ -9,6 +9,7 @@ pub enum MalExpression {
     Vector(Rc<Vec<MalExpression>>),
     HashTable(Rc<Vec<MalExpression>>),
     Function(fn(MalExpression) -> MalRet),
+    Nil()
 }
 
 pub type MalRet = Result<MalExpression, String>;
