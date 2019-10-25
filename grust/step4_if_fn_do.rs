@@ -34,6 +34,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 Symbol(sym) if sym == "def!" => handle_def(rest_forms.to_vec(), env),
                 Symbol(sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
                 Symbol(sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
+                Symbol(sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
                 Symbol(_) => match EVAL(form0, env) {
                     Ok(Function(f)) => {
                         let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
@@ -91,6 +92,28 @@ fn handle_do(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
         }
     }
     evaled_x
+}
+
+fn handle_if(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(condition), Some(eval_if_true)) => {
+            if condition.is_true_ish() {
+                EVAL(eval_if_true, env)
+            } else {
+                match forms.get(2) {
+                    Some(eval_if_false) => {
+                        EVAL(eval_if_false, env)
+                    },
+                    None => {
+                        Ok(Nil())
+                    }
+                }
+            }
+        },
+        _ => {
+            Err("if expression must have at least two arguments".to_string())
+        }
+    }
 }
 
 fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
