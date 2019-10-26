@@ -10,6 +10,7 @@ use types::MalRet;
 pub mod printer;
 pub mod reader;
 pub mod types;
+pub mod env;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {

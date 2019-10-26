@@ -1,5 +1,5 @@
 use crate::types::MalExpression;
-use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector};
+use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector, Boolean, Nil};
 use crate::types::MalRet;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -256,6 +256,16 @@ fn read_atom(reader: &mut Reader) -> MalRet {
             if let Ok(number) = token.parse::<i32>() {
                 return Ok(Int(number));
             }
+            if token == "true" {
+                return Ok(Boolean(true))
+            }
+            if token == "false" {
+                return Ok(Boolean(false))
+            }
+            if token == "nil" {
+                return Ok(Nil())
+            }
+
             match token.chars().next() {
                 None => Err("internal error: empty token".to_string()),
                 Some('"') => match unescape_string(&token) {

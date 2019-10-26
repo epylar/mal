@@ -8,10 +8,9 @@ use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use std::collections::HashMap;
 use std::rc::Rc;
 use types::MalExpression;
-use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
+use types::MalExpression::{HashTable, Int, List, RustFunction, Symbol, Vector};
 use types::MalRet;
 
 #[allow(non_snake_case)]
@@ -49,7 +48,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 }
                 Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
-                        let mut newenv = Env::new(Some(Box::new(env.clone())), HashMap::new());
+                        let mut newenv = Env::simple_new(Some(env.clone()));
                         for chunk in l1.chunks(2) {
                             if let Symbol(l_sym) = &chunk[0] {
                                 let l_evaled_val = EVAL(&chunk[1], &mut newenv)?;
@@ -68,7 +67,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                     }
                 },
                 Symbol(_) => match EVAL(l0, env) {
-                    Ok(Function(f)) => {
+                    Ok(RustFunction(f)) => {
                         let rest_evaled = eval_ast(&List(Rc::new((&l[1..]).to_vec())), env)?;
                         f(rest_evaled)
                     }
@@ -167,12 +166,12 @@ fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> M
 }
 
 fn init_env() -> Env {
-    let mut env = Env::new(None, HashMap::new());
+    let mut env = Env::simple_new(None);
 
-    env.set("+", Function(plus));
-    env.set("-", Function(minus));
-    env.set("*", Function(times));
-    env.set("/", Function(int_divide));
+    env.set("+", RustFunction(plus));
+    env.set("-", RustFunction(minus));
+    env.set("*", RustFunction(times));
+    env.set("/", RustFunction(int_divide));
 
     env
 }

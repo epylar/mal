@@ -6,6 +6,7 @@ extern crate rustyline;
 pub mod printer;
 pub mod reader;
 pub mod types;
+pub mod env;
 
 use printer::pr_str;
 use reader::read_str;
@@ -14,7 +15,7 @@ use rustyline::Editor;
 use std::collections::HashMap;
 use std::rc::Rc;
 use types::MalExpression;
-use types::MalExpression::{Function, HashTable, Int, List, Symbol, Vector};
+use types::MalExpression::{HashTable, Int, List, RustFunction, Symbol, Vector};
 use types::MalRet;
 
 type Env = HashMap<String, MalExpression>;
@@ -35,7 +36,7 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
             let l0 = &l[0];
             match l0 {
                 Symbol(_) => match EVAL(l0.clone(), env) {
-                    Ok(Function(f)) => {
+                    Ok(RustFunction(f)) => {
                         let rest_evaled = eval_ast(List(Rc::new((&l[1..]).to_vec())), env)?;
                         f(rest_evaled)
                     }
@@ -134,10 +135,10 @@ fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> M
 fn init_env() -> Env {
     let mut env: Env = HashMap::new();
 
-    env.insert("+".to_string(), Function(plus));
-    env.insert("-".to_string(), Function(minus));
-    env.insert("*".to_string(), Function(times));
-    env.insert("/".to_string(), Function(int_divide));
+    env.insert("+".to_string(), RustFunction(plus));
+    env.insert("-".to_string(), RustFunction(minus));
+    env.insert("*".to_string(), RustFunction(times));
+    env.insert("/".to_string(), RustFunction(int_divide));
 
     env
 }
