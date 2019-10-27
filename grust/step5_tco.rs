@@ -77,7 +77,25 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                             return Ok(Nil());
                         }
                     }
-                    Symbol(sym) if sym == "if" => return handle_if(rest_forms.to_vec(), &mut env),
+                    Symbol(sym) if sym == "if" => {
+                        return match (rest_forms.get(0), rest_forms.get(1)) {
+                            (Some(condition), Some(eval_if_true)) => {
+                                if EVAL(condition, &mut env)?.is_true_in_if() {
+                                    ast = eval_if_true.clone();
+                                    continue;
+                                } else {
+                                    match forms.get(2) {
+                                        Some(eval_if_false) => {
+                                            ast = eval_if_false.clone();
+                                            continue;
+                                        }
+                                        None => Ok(Nil()),
+                                    }
+                                }
+                            }
+                            _ => Err("if expression must have at least two arguments".to_string()),
+                        }
+                    }
                     Symbol(sym) if sym == "fn*" => {
                         return handle_fn(rest_forms.to_vec(), env.clone())
                     }
@@ -149,22 +167,6 @@ fn handle_def(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
             Ok(value)
         }
         _ => Err("def! requires 2 arguments; first argument should be a symbol".to_string()),
-    }
-}
-
-fn handle_if(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
-    match (forms.get(0), forms.get(1)) {
-        (Some(condition), Some(eval_if_true)) => {
-            if EVAL(condition, env)?.is_true_in_if() {
-                EVAL(eval_if_true, env)
-            } else {
-                match forms.get(2) {
-                    Some(eval_if_false) => EVAL(eval_if_false, env),
-                    None => Ok(Nil()),
-                }
-            }
-        }
-        _ => Err("if expression must have at least two arguments".to_string()),
     }
 }
 
