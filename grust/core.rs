@@ -26,20 +26,6 @@ impl MalExpression {
         !(self.is_nil() || self.is_false())
     }
 
-    fn is_empty_string(&self) -> bool {
-        match self {
-            MalExpression::String(x) if x == "" => true,
-            _ => false,
-        }
-    }
-
-    fn is_zero(&self) -> bool {
-        match self {
-            MalExpression::Int(0) => true,
-            _ => false,
-        }
-    }
-
     fn equals(&self, other: &MalExpression) -> bool {
         fn compare_vecs(a: &Rc<Vec<MalExpression>>, b: &Rc<Vec<MalExpression>>) -> bool {
             if a.len() != b.len() {

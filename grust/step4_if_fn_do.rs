@@ -56,10 +56,12 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                 .iter()
                                 .map(|x| match x {
                                     MalExpression::Symbol(x_symbol) => x_symbol.clone(),
-                                    _ => panic!("non-symbol {} in FnFunction binds", pr_str(x)),
+                                    _ => {
+                                        panic!("non-symbol {} in FnFunction binds", pr_str(x, true))
+                                    }
                                 })
                                 .collect();
-                            if (binds_vec_string.len() != rest_evaled_vec.len()) {
+                            if binds_vec_string.len() != rest_evaled_vec.len() {
                                 return Err(
                                     "function applied to incorrect number of arguments".to_string()
                                 );
@@ -84,7 +86,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 },
                 other => Err(format!(
                     "not a symbol, list, or function: {}",
-                    pr_str(other)
+                    pr_str(other, true)
                 )),
             }
         }
@@ -103,7 +105,7 @@ fn handle_let(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
                 } else {
                     return Err(format!(
                         "let* sub-argument not a symbol: {}",
-                        pr_str(&chunk[0])
+                        pr_str(&chunk[0], true)
                     ));
                 }
             }
@@ -196,7 +198,7 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
 
 #[allow(non_snake_case)]
 fn PRINT(form: MalRet) -> Result<String, String> {
-    Ok(pr_str(&form?))
+    Ok(pr_str(&form?, true))
 }
 
 fn rep(line: &str, env: &mut Env) -> Result<String, String> {

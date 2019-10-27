@@ -45,9 +45,9 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
                         }
                     }
                     Err(e) => Err(e),
-                    Ok(other) => Err(format!("Not a function: {}", pr_str(&other))),
+                    Ok(other) => Err(format!("Not a function: {}", pr_str(&other, true))),
                 },
-                other => Err(format!("not a symbol: {}", pr_str(other))),
+                other => Err(format!("not a symbol: {}", pr_str(other, true))),
             }
         }
         _ => eval_ast(ast, env),
@@ -82,7 +82,7 @@ fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
 
 #[allow(non_snake_case)]
 fn PRINT(form: MalRet) -> Result<String, String> {
-    Ok(pr_str(&form?))
+    Ok(pr_str(&form?, true))
 }
 
 fn rep(line: &str, env: &Env) -> Result<String, String> {

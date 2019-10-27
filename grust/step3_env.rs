@@ -42,7 +42,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                         }
                         _ => Err(format!(
                             "attempting to def! with a non-symbol: {}",
-                            pr_str(&key)
+                            pr_str(&key, true)
                         )),
                     }
                 }
@@ -56,7 +56,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                             } else {
                                 return Err(format!(
                                     "let* sub-argument not a symbol: {}",
-                                    pr_str(&chunk[0])
+                                    pr_str(&chunk[0], true)
                                 ));
                             }
                         }
@@ -77,9 +77,9 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                         }
                     }
                     Err(e) => Err(e),
-                    Ok(other) => Err(format!("Not a function: {}", pr_str(&other))),
+                    Ok(other) => Err(format!("Not a function: {}", pr_str(&other, true))),
                 },
-                other => Err(format!("not a symbol: {}", pr_str(other))),
+                other => Err(format!("not a symbol: {}", pr_str(other, true))),
             }
         }
         _ => eval_ast(&ast, env),
@@ -116,7 +116,7 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
 
 #[allow(non_snake_case)]
 fn PRINT(form: MalRet) -> Result<String, String> {
-    Ok(pr_str(&form?))
+    Ok(pr_str(&form?, true))
 }
 
 fn rep(line: &str, env: &mut Env) -> Result<String, String> {

@@ -7,10 +7,10 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use types::MalRet;
 
+pub mod env;
 pub mod printer;
 pub mod reader;
 pub mod types;
-pub mod env;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -25,7 +25,7 @@ fn EVAL(form: MalRet) -> MalRet {
 #[allow(non_snake_case)]
 fn PRINT(form: MalRet) -> Result<String, String> {
     match form {
-        Ok(actual_form) => Ok(pr_str(&actual_form)),
+        Ok(actual_form) => Ok(pr_str(&actual_form, true)),
         Err(e) => Err(e),
     }
 }

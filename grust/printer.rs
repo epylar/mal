@@ -3,7 +3,7 @@ use crate::types::MalExpression::{
     Boolean, FnFunction, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
 };
 
-pub fn pr_str(expression: &MalExpression) -> String {
+pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
     match expression {
         Int(i) => i.to_string(),
         Symbol(s) => s.to_string(),
@@ -11,23 +11,27 @@ pub fn pr_str(expression: &MalExpression) -> String {
             if s.starts_with("\u{29e}") {
                 format!(":{}", &s[2..])
             } else {
-                "\"".to_owned()
-                    + &s.replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
-                        .replace("\n", "\\n")
-                    + "\""
+                if print_readably {
+                    "\"".to_owned()
+                        + &s.replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
+                            .replace("\n", "\\n")
+                        + "\""
+                } else {
+                    s.to_string()
+                }
             }
         }
         List(l) => {
-            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("({})", middle.join(" "))
         }
         Vector(l) => {
-            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("[{}]", middle.join(" "))
         }
         HashTable(l) => {
-            let middle: Vec<String> = l.iter().map(pr_str).collect();
+            let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
         RustFunction(_) => "#<native function>".to_string(),
@@ -37,8 +41,8 @@ pub fn pr_str(expression: &MalExpression) -> String {
             outer_env: _,
         } => format!(
             "#<fn* function: binds = {}; ast = {}>",
-            pr_str(&Vector(binds.clone())),
-            pr_str(ast),
+            pr_str(&Vector(binds.clone()), print_readably),
+            pr_str(ast, print_readably),
         ),
         Boolean(x) => match x {
             true => "true".to_string(),
@@ -55,6 +59,6 @@ mod tests {
 
     #[test]
     fn test_pr_str() {
-        assert_eq!(pr_str(&Int(1)), "1");
+        assert_eq!(pr_str(&Int(1), true), "1");
     }
 }

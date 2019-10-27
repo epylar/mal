@@ -1,5 +1,5 @@
 use crate::types::MalExpression;
-use crate::types::MalExpression::{HashTable, Int, List, Symbol, Vector, Boolean, Nil};
+use crate::types::MalExpression::{Boolean, HashTable, Int, List, Nil, Symbol, Vector};
 use crate::types::MalRet;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -257,13 +257,13 @@ fn read_atom(reader: &mut Reader) -> MalRet {
                 return Ok(Int(number));
             }
             if token == "true" {
-                return Ok(Boolean(true))
+                return Ok(Boolean(true));
             }
             if token == "false" {
-                return Ok(Boolean(false))
+                return Ok(Boolean(false));
             }
             if token == "nil" {
-                return Ok(Nil())
+                return Ok(Nil());
             }
 
             match token.chars().next() {
