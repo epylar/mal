@@ -24,89 +24,105 @@ fn READ(input: &str) -> MalRet {
 #[allow(non_snake_case)]
 fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
     // println!("EVAL: {}", pr_str(&ast));
-    match ast.clone() {
-        List(forms) => {
-            if forms.is_empty() {
-                return Ok(ast.clone());
-            }
-            let form0 = &forms[0];
-            let rest_forms = &forms[1..];
-            match form0 {
-                Symbol(sym) if sym == "def!" => handle_def(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env.clone()),
-                RustFunction(f) => {
-                    if let List(rest_evaled) = eval_ast(&List(Rc::new(rest_forms.to_vec())), env)? {
-                        f(rest_evaled.to_vec())
-                    } else {
-                        panic!("eval_ast List -> non-List")
-                    }
+    let mut ast: MalExpression = ast.clone();
+    let mut env: Env = env.clone();
+    loop {
+        match ast.clone() {
+            List(forms) => {
+                if forms.is_empty() {
+                    return Ok(ast.clone());
                 }
-                FnFunction {
-                    binds,
-                    ast,
-                    outer_env,
-                } => {
-                    let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
-                    match rest_evaled {
-                        List(rest_evaled_vec) => {
-                            let binds_vec_string: Vec<String> = binds
-                                .iter()
-                                .map(|x| match x {
-                                    MalExpression::Symbol(x_symbol) => x_symbol.clone(),
-                                    _ => {
-                                        panic!("non-symbol {} in FnFunction binds", pr_str(x, true))
-                                    }
-                                })
-                                .collect();
-                            let mut fn_env = Env::new(
-                                Some(outer_env.clone()),
-                                Rc::new(binds_vec_string),
-                                rest_evaled_vec,
-                            )?;
-                            EVAL(&ast, &mut fn_env)
+                let form0 = &forms[0];
+                let rest_forms = &forms[1..];
+                match form0 {
+                    Symbol(sym) if sym == "def!" => {
+                        return handle_def(rest_forms.to_vec(), &mut env)
+                    }
+                    Symbol(sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
+                        (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
+                            let mut newenv =
+                                Env::new(Some(env.clone()), Rc::new(vec![]), Rc::new(vec![]))?;
+                            for chunk in f0.chunks(2) {
+                                if let Symbol(key) = &chunk[0] {
+                                    let val = EVAL(&chunk[1], &mut newenv)?;
+                                    newenv.set(key, val);
+                                } else {
+                                    return Err(format!(
+                                        "let* sub-argument not a symbol: {}",
+                                        pr_str(&chunk[0], true)
+                                    ));
+                                }
+                            }
+                            ast = f1.clone();
+                            env = newenv;
+                            continue;
                         }
-                        _ => panic!("eval_ast(List) => non-List"),
+                        _ => {
+                            return Err("let* needs 2 arguments; first should be a list or vector"
+                                .to_string())
+                        }
+                    },
+                    Symbol(sym) if sym == "do" => return handle_do(rest_forms.to_vec(), &mut env),
+                    Symbol(sym) if sym == "if" => return handle_if(rest_forms.to_vec(), &mut env),
+                    Symbol(sym) if sym == "fn*" => {
+                        return handle_fn(rest_forms.to_vec(), env.clone())
+                    }
+                    RustFunction(f) => {
+                        if let List(rest_evaled) =
+                            eval_ast(&List(Rc::new(rest_forms.to_vec())), &mut env)?
+                        {
+                            return f(rest_evaled.to_vec());
+                        } else {
+                            panic!("eval_ast List -> non-List")
+                        }
+                    }
+                    FnFunction {
+                        binds,
+                        ast,
+                        outer_env,
+                    } => {
+                        let rest_evaled =
+                            eval_ast(&List(Rc::new((&forms[1..]).to_vec())), &mut env)?;
+                        match rest_evaled {
+                            List(rest_evaled_vec) => {
+                                let binds_vec_string: Vec<String> = binds
+                                    .iter()
+                                    .map(|x| match x {
+                                        MalExpression::Symbol(x_symbol) => x_symbol.clone(),
+                                        _ => panic!(
+                                            "non-symbol {} in FnFunction binds",
+                                            pr_str(x, true)
+                                        ),
+                                    })
+                                    .collect();
+                                let mut fn_env = Env::new(
+                                    Some(outer_env.clone()),
+                                    Rc::new(binds_vec_string),
+                                    rest_evaled_vec,
+                                )?;
+                                return EVAL(&ast, &mut fn_env);
+                            }
+                            _ => panic!("eval_ast(List) => non-List"),
+                        }
+                    }
+                    Symbol(_) | List(_) => match EVAL(form0, &mut env) {
+                        Ok(form0_evaled) => {
+                            let mut spliced_ast = vec![form0_evaled];
+                            spliced_ast.append(&mut (&forms[1..]).to_vec());
+                            return EVAL(&List(Rc::new(spliced_ast)), &mut env);
+                        }
+                        Err(e) => return Err(e),
+                    },
+                    other => {
+                        return Err(format!(
+                            "not a symbol, list, or function: {}",
+                            pr_str(other, true)
+                        ))
                     }
                 }
-                Symbol(_) | List(_) => match EVAL(form0, env) {
-                    Ok(form0_evaled) => {
-                        let mut spliced_ast = vec![form0_evaled];
-                        spliced_ast.append(&mut (&forms[1..]).to_vec());
-                        EVAL(&List(Rc::new(spliced_ast)), env)
-                    }
-                    Err(e) => Err(e),
-                },
-                other => Err(format!(
-                    "not a symbol, list, or function: {}",
-                    pr_str(other, true)
-                )),
             }
+            _ => return eval_ast(&ast, &mut env),
         }
-        _ => eval_ast(&ast, env),
-    }
-}
-
-fn handle_let(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
-    match (forms.get(0), forms.get(1)) {
-        (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
-            let mut newenv = Env::new(Some(env.clone()), Rc::new(vec![]), Rc::new(vec![]))?;
-            for chunk in f0.chunks(2) {
-                if let Symbol(key) = &chunk[0] {
-                    let val = EVAL(&chunk[1], &mut newenv)?;
-                    newenv.set(key, val);
-                } else {
-                    return Err(format!(
-                        "let* sub-argument not a symbol: {}",
-                        pr_str(&chunk[0], true)
-                    ));
-                }
-            }
-            EVAL(f1, &mut newenv)
-        }
-        _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
     }
 }
 
