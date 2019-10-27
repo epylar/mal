@@ -1,6 +1,8 @@
 use crate::env::Env;
 use crate::types::MalExpression;
-use crate::types::MalExpression::{Int, RustFunction};
+use crate::types::MalExpression::{
+    Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
+};
 use crate::types::MalRet;
 use std::rc::Rc;
 
@@ -21,7 +23,7 @@ impl MalExpression {
     }
 
     pub fn is_true_in_if(&self) -> bool {
-        !(self.is_nil() || self.is_empty_string() || self.is_zero() || self.is_false())
+        !(self.is_nil() || self.is_false())
     }
 
     fn is_empty_string(&self) -> bool {
@@ -37,6 +39,52 @@ impl MalExpression {
             _ => false,
         }
     }
+
+    fn equals(&self, other: &MalExpression) -> bool {
+        fn compare_vecs(a: &Rc<Vec<MalExpression>>, b: &Rc<Vec<MalExpression>>) -> bool {
+            if a.len() != b.len() {
+                return false;
+            }
+            for i in 0..(a.len()) {
+                if !&a[i].equals(&b[i]) {
+                    return false;
+                }
+            }
+            true
+        }
+
+        match self {
+            Symbol(x) => match other {
+                Symbol(y) => x == y,
+                _ => false,
+            },
+            Int(x) => match other {
+                Int(y) => x == y,
+                _ => false,
+            },
+            MalExpression::String(x) => match other {
+                MalExpression::String(y) => x == y,
+                _ => false,
+            },
+            Boolean(x) => match other {
+                Boolean(y) => x == y,
+                _ => false,
+            },
+            List(x) | Vector(x) => match other {
+                List(y) | Vector(y) => compare_vecs(x, y),
+                _ => false,
+            },
+            HashTable(x) => match other {
+                HashTable(y) => compare_vecs(x, y),
+                _ => false,
+            },
+            Nil() => match other {
+                Nil() => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 pub fn core_ns() -> Env {
@@ -45,7 +93,7 @@ pub fn core_ns() -> Env {
     }
 
     fn minus(args: Vec<MalExpression>) -> MalRet {
-        mal_int_fn_binary(args, |a, b| a - b)
+        mal_int_fn_binary_int(args, |a, b| a - b)
     }
 
     fn times(args: Vec<MalExpression>) -> MalRet {
@@ -53,12 +101,35 @@ pub fn core_ns() -> Env {
     }
 
     fn int_divide(args: Vec<MalExpression>) -> MalRet {
-        mal_int_fn_binary(args, |a, b| a / b)
+        mal_int_fn_binary_int(args, |a, b| a / b)
     }
 
-    fn mal_int_fn_binary(args: Vec<MalExpression>, func: fn(i32, i32) -> i32) -> MalRet {
+    fn less_than(args: Vec<MalExpression>) -> MalRet {
+        mal_int_fn_binary_bool(args, |a, b| a < b)
+    }
+
+    fn less_than_equals(args: Vec<MalExpression>) -> MalRet {
+        mal_int_fn_binary_bool(args, |a, b| a <= b)
+    }
+
+    fn more_than(args: Vec<MalExpression>) -> MalRet {
+        mal_int_fn_binary_bool(args, |a, b| a > b)
+    }
+
+    fn more_than_equals(args: Vec<MalExpression>) -> MalRet {
+        mal_int_fn_binary_bool(args, |a, b| a >= b)
+    }
+
+    fn mal_int_fn_binary_int(args: Vec<MalExpression>, func: fn(i32, i32) -> i32) -> MalRet {
         match (args.get(0), args.get(1)) {
             (Some(Int(a)), Some(Int(b))) => Ok(Int(func(*a, *b))),
+            _ => Err("invalid arguments to binary int function".to_string()),
+        }
+    }
+
+    fn mal_int_fn_binary_bool(args: Vec<MalExpression>, func: fn(i32, i32) -> bool) -> MalRet {
+        match (args.get(0), args.get(1)) {
+            (Some(Int(a)), Some(Int(b))) => Ok(Boolean(func(*a, *b))),
             _ => Err("invalid arguments to binary int function".to_string()),
         }
     }
@@ -74,12 +145,56 @@ pub fn core_ns() -> Env {
         Ok(Int(result))
     }
 
+    fn list(args: Vec<MalExpression>) -> MalRet {
+        Ok(MalExpression::List(Rc::new(args)))
+    }
+
+    fn list_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(List(_)) => Ok(Boolean(true)),
+            None => Err("list? requires an argument".to_string()),
+            _ => Ok(Boolean(false)),
+        }
+    }
+
+    fn empty_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(List(l)) | Some(Vector(l)) => Ok(Boolean(l.is_empty())),
+            None => Err("empty? requires a list or vector argument".to_string()),
+            _ => Ok(Boolean(false)),
+        }
+    }
+
+    fn count(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(List(l)) | Some(Vector(l)) => Ok(Int(l.len() as i32)),
+            Some(Nil()) => Ok(Int(0)),
+            _ => Err("count requires a list, vector, or nil argument".to_string()),
+        }
+    }
+
+    fn equal(args: Vec<MalExpression>) -> MalRet {
+        match (args.get(0), args.get(1)) {
+            (Some(a), Some(b)) => Ok(Boolean(a.equals(b))),
+            _ => Err("= requires two arguments".to_string()),
+        }
+    }
+
     let mut env = Env::new(None, Rc::new(vec![]), Rc::new(vec![]));
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
     env.set("*", RustFunction(times));
     env.set("/", RustFunction(int_divide));
+    env.set("<", RustFunction(less_than));
+    env.set("<=", RustFunction(less_than_equals));
+    env.set(">", RustFunction(more_than));
+    env.set(">=", RustFunction(more_than_equals));
+    env.set("list", RustFunction(list));
+    env.set("list?", RustFunction(list_q));
+    env.set("empty?", RustFunction(empty_q));
+    env.set("count", RustFunction(count));
+    env.set("=", RustFunction(equal));
 
     env
 }

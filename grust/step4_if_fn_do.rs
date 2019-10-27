@@ -59,6 +59,11 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                     _ => panic!("non-symbol {} in FnFunction binds", pr_str(x)),
                                 })
                                 .collect();
+                            if (binds_vec_string.len() != rest_evaled_vec.len()) {
+                                return Err(
+                                    "function applied to incorrect number of arguments".to_string()
+                                );
+                            }
                             let mut fn_env = Env::new(
                                 Some(outer_env.clone()),
                                 Rc::new(binds_vec_string),
@@ -167,10 +172,7 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
         Symbol(symbol) => {
             let get = env.get(&symbol);
             match get {
-                Some(result) => {
-                    println!("symbol lookup: {}", pr_str(&result));
-                    Ok(result.clone())
-                }
+                Some(result) => Ok(result.clone()),
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
