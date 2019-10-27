@@ -3,10 +3,10 @@ extern crate lazy_static;
 extern crate regex;
 extern crate rustyline;
 
+pub mod env;
 pub mod printer;
 pub mod reader;
 pub mod types;
-pub mod env;
 
 use printer::pr_str;
 use reader::read_str;
@@ -37,8 +37,12 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
             match l0 {
                 Symbol(_) => match EVAL(l0.clone(), env) {
                     Ok(RustFunction(f)) => {
-                        let rest_evaled = eval_ast(List(Rc::new((&l[1..]).to_vec())), env)?;
-                        f(rest_evaled)
+                        if let List(rest_evaled) = eval_ast(List(Rc::new((&l[1..]).to_vec())), env)?
+                        {
+                            f(rest_evaled.to_vec())
+                        } else {
+                            panic!("eval_ast List -> non-List")
+                        }
                     }
                     Err(e) => Err(e),
                     Ok(other) => Err(format!("Not a function: {}", pr_str(&other))),
@@ -85,51 +89,43 @@ fn rep(line: &str, env: &Env) -> Result<String, String> {
     PRINT(EVAL(READ(line)?, env))
 }
 
-fn plus(args: MalExpression) -> MalRet {
+fn plus(args: Vec<MalExpression>) -> MalRet {
     mal_int_fn(args, |a, b| a + b, 0)
 }
 
-fn minus(args: MalExpression) -> MalRet {
+fn minus(args: Vec<MalExpression>) -> MalRet {
     mal_int_fn_binary(args, |a, b| a - b)
 }
 
-fn times(args: MalExpression) -> MalRet {
+fn times(args: Vec<MalExpression>) -> MalRet {
     mal_int_fn(args, |a, b| a * b, 1)
 }
 
-fn int_divide(args: MalExpression) -> MalRet {
+fn int_divide(args: Vec<MalExpression>) -> MalRet {
     mal_int_fn_binary(args, |a, b| a / b)
 }
 
-fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> MalRet {
-    if let List(l) = args {
-        match (&l[0], &l[1]) {
-            (Int(a), Int(b)) => Ok(Int(func(*a, *b))),
-            _ => Err("invalid arguments to binary int function".to_string()),
-        }
-    } else {
-        Err("function called with non-list".to_string())
+fn mal_int_fn_binary(args: Vec<MalExpression>, func: fn(i32, i32) -> i32) -> MalRet {
+    match (args.get(0), args.get(1)) {
+        (Some(Int(a)), Some(Int(b))) => Ok(Int(func(*a, *b))),
+        _ => Err("invalid arguments to binary int function".to_string()),
     }
+}
+
+fn mal_int_fn(args: Vec<MalExpression>, func: fn(i32, i32) -> i32, initial: i32) -> MalRet {
+    let mut result = initial;
+    for x in args {
+        match x {
+            Int(x_int) => result = func(result, x_int),
+            _ => return Err("function called with non-int".to_string()),
+        }
+    }
+    Ok(Int(result))
 }
 
 fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpression> {
     let len = data.len();
     (0..len).map(move |i| data[i].clone())
-}
-
-fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> MalRet {
-    if let List(l) = args {
-        let mut result = initial;
-        for x in iterate_rc_vec(l) {
-            match x {
-                Int(x_int) => result = func(result, x_int),
-                _ => return Err("function called with non-int".to_string()),
-            }
-        }
-        Ok(Int(result))
-    } else {
-        Err("function called with non-list".to_string())
-    }
 }
 
 fn init_env() -> Env {

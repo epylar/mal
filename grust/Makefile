@@ -8,13 +8,16 @@ mal: step4_if_fn_do
 	cp $< $@
 
 %: %.rs
-	cargo build --release --bin $*
-	cp target/release/$* $@
+	cargo build --bin $*
+	# cargo build --release --bin $*
+	cp target/debug/$* $@
+	# cp target/release/$* $@
 
 STEP0_DEPS = Cargo.toml
 STEP1_DEPS = $(STEP0_DEPS) reader.rs types.rs printer.rs env.rs
 STEP2_DEPS = $(STEP1_DEPS)
 STEP3_DEPS = $(STEP2_DEPS)
+STEP4_DEPS = $(STEP3_DEPS) core.rs
 
 step0_repl: $(STEP0_DEPS)
 step1_read_print: $(STEP1_DEPS)

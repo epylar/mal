@@ -1,3 +1,4 @@
+pub mod core;
 pub mod env;
 pub mod printer;
 pub mod reader;
@@ -9,8 +10,9 @@ use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::rc::Rc;
+use types::iterate_rc_vec;
 use types::MalExpression;
-use types::MalExpression::{FnFunction, HashTable, Int, List, Nil, RustFunction, Symbol, Vector};
+use types::MalExpression::{FnFunction, HashTable, List, Nil, RustFunction, Symbol, Vector};
 use types::MalRet;
 
 #[allow(non_snake_case)]
@@ -36,8 +38,11 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 Symbol(sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
                 Symbol(sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env.clone()),
                 RustFunction(f) => {
-                    let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
-                    f(rest_evaled)
+                    if let List(rest_evaled) = eval_ast(&List(Rc::new(rest_forms.to_vec())), env)? {
+                        f(rest_evaled.to_vec())
+                    } else {
+                        panic!("eval_ast List -> non-List")
+                    }
                 }
                 FnFunction {
                     binds,
@@ -196,68 +201,10 @@ fn rep(line: &str, env: &mut Env) -> Result<String, String> {
     PRINT(EVAL(&READ(line)?, env))
 }
 
-fn plus(args: MalExpression) -> MalRet {
-    mal_int_fn(args, |a, b| a + b, 0)
-}
-
-fn minus(args: MalExpression) -> MalRet {
-    mal_int_fn_binary(args, |a, b| a - b)
-}
-
-fn times(args: MalExpression) -> MalRet {
-    mal_int_fn(args, |a, b| a * b, 1)
-}
-
-fn int_divide(args: MalExpression) -> MalRet {
-    mal_int_fn_binary(args, |a, b| a / b)
-}
-
-fn mal_int_fn_binary(args: MalExpression, func: fn(i32, i32) -> i32) -> MalRet {
-    if let List(l) = args {
-        match (&l[0], &l[1]) {
-            (Int(a), Int(b)) => Ok(Int(func(*a, *b))),
-            _ => Err("invalid arguments to binary int function".to_string()),
-        }
-    } else {
-        Err("function called with non-list".to_string())
-    }
-}
-
-fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpression> {
-    let len = data.len();
-    (0..len).map(move |i| data[i].clone())
-}
-
-fn mal_int_fn(args: MalExpression, func: fn(i32, i32) -> i32, initial: i32) -> MalRet {
-    if let List(l) = args {
-        let mut result = initial;
-        for x in iterate_rc_vec(l) {
-            match x {
-                Int(x_int) => result = func(result, x_int),
-                _ => return Err("function called with non-int".to_string()),
-            }
-        }
-        Ok(Int(result))
-    } else {
-        Err("function called with non-list".to_string())
-    }
-}
-
-fn init_env() -> Env {
-    let mut env = Env::new(None, Rc::new(vec![]), Rc::new(vec![]));
-
-    env.set("+", RustFunction(plus));
-    env.set("-", RustFunction(minus));
-    env.set("*", RustFunction(times));
-    env.set("/", RustFunction(int_divide));
-
-    env
-}
-
 fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
-    let mut env = init_env();
+    let mut env = core::core_ns();
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
@@ -293,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_do() {
-        let mut env = init_env();
+        let mut env = core::core_ns();
         assert_eq!(rep("(do 1 2 3)", &mut env), Ok("3".to_string()));
         assert_eq!(rep("(do 2)", &mut env), Ok("2".to_string()));
         assert_eq!(rep("(do)", &mut env), Ok("nil".to_string()));
