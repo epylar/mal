@@ -48,7 +48,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 }
                 Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
-                        let mut newenv = Env::simple_new(Some(env.clone()));
+                        let mut newenv = Env::simple_new(Some(env.clone()))?;
                         for chunk in l1.chunks(2) {
                             if let Symbol(l_sym) = &chunk[0] {
                                 let l_evaled_val = EVAL(&chunk[1], &mut newenv)?;
@@ -92,7 +92,7 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
         Symbol(symbol) => {
             let get = env.get(&symbol);
             match get {
-                Some(result) => Ok(result.clone()),
+                Some(result) => Ok(result),
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
@@ -162,21 +162,24 @@ fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpre
     (0..len).map(move |i| data[i].clone())
 }
 
-fn init_env() -> Env {
-    let mut env = Env::simple_new(None);
+fn init_env() -> Result<Env, String> {
+    let mut env = Env::simple_new(None)?;
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
     env.set("*", RustFunction(times));
     env.set("/", RustFunction(int_divide));
 
-    env
+    Ok(env)
 }
 
 fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
-    let mut env = init_env();
+    let mut env = match init_env() {
+        Ok(e) => e,
+        Err(e) => panic!("Error initializing environment: {}", e),
+    };
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
@@ -212,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_rep() {
-        let mut env = init_env();
+        let mut env = init_env().unwrap();
         assert_eq!(rep("1", &mut env), Ok("1".to_string()));
         assert_eq!(rep("(+ 1)", &mut env), Ok("1".to_string()));
         assert_eq!(rep("(+ 1 2)", &mut env), Ok("3".to_string()));
@@ -222,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_let() {
-        let mut env = init_env();
+        let mut env = init_env().unwrap();
         assert_eq!(
             rep("(let* (p (+ 2 3) q (+ 2 p)) (+ p q))", &mut env),
             Ok("12".to_string())

@@ -61,16 +61,11 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                     }
                                 })
                                 .collect();
-                            if binds_vec_string.len() != rest_evaled_vec.len() {
-                                return Err(
-                                    "function applied to incorrect number of arguments".to_string()
-                                );
-                            }
                             let mut fn_env = Env::new(
                                 Some(outer_env.clone()),
                                 Rc::new(binds_vec_string),
                                 rest_evaled_vec,
-                            );
+                            )?;
                             EVAL(&ast, &mut fn_env)
                         }
                         _ => panic!("eval_ast(List) => non-List"),
@@ -97,7 +92,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
 fn handle_let(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
-            let mut newenv = Env::new(Some(env.clone()), Rc::new(vec![]), Rc::new(vec![]));
+            let mut newenv = Env::new(Some(env.clone()), Rc::new(vec![]), Rc::new(vec![]))?;
             for chunk in f0.chunks(2) {
                 if let Symbol(key) = &chunk[0] {
                     let val = EVAL(&chunk[1], &mut newenv)?;
@@ -174,7 +169,7 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
         Symbol(symbol) => {
             let get = env.get(&symbol);
             match get {
-                Some(result) => Ok(result.clone()),
+                Some(result) => Ok(result),
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
@@ -212,6 +207,12 @@ fn main() {
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
+    }
+
+    // functions defined in MAL
+    match rep("(def! not (fn* (a) (if a false true)))", &mut env) {
+        Ok(_) => {}
+        Err(e) => panic!("Error in internal function setup: {}", e),
     }
 
     loop {

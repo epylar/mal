@@ -11,25 +11,39 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn simple_new(outer: Option<Env>) -> Env {
+    pub fn simple_new(outer: Option<Env>) -> Result<Env, String> {
         Env::new(outer, Rc::new(vec![]), Rc::new(vec![]))
     }
 
-    pub fn new(outer: Option<Env>, binds: Rc<Vec<String>>, exprs: Rc<Vec<MalExpression>>) -> Env {
+    pub fn new(
+        outer: Option<Env>,
+        binds: Rc<Vec<String>>,
+        exprs: Rc<Vec<MalExpression>>,
+    ) -> Result<Env, String> {
         let mut data: HashMap<String, MalExpression> = HashMap::new();
-        assert_eq!(binds.len(), exprs.len());
         if !binds.is_empty() {
             for i in 0..binds.len() {
+                if binds[i] == "&" {
+                    if binds.len() > (i + 1) {
+                        data.insert(
+                            binds[i + 1].clone(),
+                            MalExpression::List(Rc::new(exprs[i..].to_vec())),
+                        );
+                    } else {
+                        return Err("no elements in binds after &".to_string());
+                    }
+                    break;
+                }
                 data.insert(binds[i].clone(), exprs[i].clone());
             }
         }
-        Env {
+        Ok(Env {
             outer: match outer {
                 Some(e) => Some(Rc::new(e)),
                 None => None,
             },
             data: Rc::new(RefCell::new(data)),
-        }
+        })
     }
 
     pub fn set(&mut self, key: &str, val: MalExpression) {

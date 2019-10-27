@@ -1,9 +1,11 @@
 use crate::env::Env;
+use crate::printer::pr_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
     Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
 };
 use crate::types::MalRet;
+use itertools::Itertools;
 use std::rc::Rc;
 
 impl MalExpression {
@@ -166,7 +168,32 @@ pub fn core_ns() -> Env {
         }
     }
 
-    let mut env = Env::new(None, Rc::new(vec![]), Rc::new(vec![]));
+    fn pr_dash_str(args: Vec<MalExpression>) -> MalRet {
+        Ok(MalExpression::String(
+            args.iter().map(|x| pr_str(x, true)).join(" "),
+        ))
+    }
+
+    fn str(args: Vec<MalExpression>) -> MalRet {
+        Ok(MalExpression::String(
+            args.iter().map(|x| pr_str(x, false)).join(""),
+        ))
+    }
+
+    fn prn(args: Vec<MalExpression>) -> MalRet {
+        println!("{}", args.iter().map(|x| pr_str(x, true)).join(" "));
+        Ok(Nil())
+    }
+
+    fn println(args: Vec<MalExpression>) -> MalRet {
+        println!("{}", args.iter().map(|x| pr_str(x, false)).join(" "));
+        Ok(Nil())
+    }
+
+    let mut env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
+        Ok(e) => e,
+        Err(e) => panic!("Error setting up initial environment: {}", e),
+    };
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
@@ -181,6 +208,10 @@ pub fn core_ns() -> Env {
     env.set("empty?", RustFunction(empty_q));
     env.set("count", RustFunction(count));
     env.set("=", RustFunction(equal));
+    env.set("pr-str", RustFunction(pr_dash_str));
+    env.set("str", RustFunction(str));
+    env.set("prn", RustFunction(prn));
+    env.set("println", RustFunction(println));
 
     env
 }

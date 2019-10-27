@@ -10,16 +10,14 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
         MalExpression::String(s) => {
             if s.starts_with("\u{29e}") {
                 format!(":{}", &s[2..])
+            } else if print_readably {
+                "\"".to_owned()
+                    + &s.replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                    + "\""
             } else {
-                if print_readably {
-                    "\"".to_owned()
-                        + &s.replace("\\", "\\\\")
-                            .replace("\"", "\\\"")
-                            .replace("\n", "\\n")
-                        + "\""
-                } else {
-                    s.to_string()
-                }
+                s.to_string()
             }
         }
         List(l) => {
@@ -35,11 +33,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
         RustFunction(_) => "#<native function>".to_string(),
-        FnFunction {
-            binds,
-            ast,
-            outer_env: _,
-        } => format!(
+        FnFunction { binds, ast, .. } => format!(
             "#<fn* function: binds = {}; ast = {}>",
             pr_str(&Vector(binds.clone()), print_readably),
             pr_str(ast, print_readably),
