@@ -62,7 +62,21 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                 .to_string())
                         }
                     },
-                    Symbol(sym) if sym == "do" => return handle_do(rest_forms.to_vec(), &mut env),
+                    Symbol(sym) if sym == "do" => {
+                        if !rest_forms.is_empty() {
+                            for x in rest_forms[0..(rest_forms.len() - 1)].iter() {
+                                let evaled = EVAL(&x, &mut env);
+                                if evaled.is_err() {
+                                    return evaled;
+                                }
+                            }
+
+                            ast = rest_forms[rest_forms.len() - 1].clone();
+                        // env unchanged
+                        } else {
+                            return Ok(Nil());
+                        }
+                    }
                     Symbol(sym) if sym == "if" => return handle_if(rest_forms.to_vec(), &mut env),
                     Symbol(sym) if sym == "fn*" => {
                         return handle_fn(rest_forms.to_vec(), env.clone())
@@ -136,17 +150,6 @@ fn handle_def(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
         }
         _ => Err("def! requires 2 arguments; first argument should be a symbol".to_string()),
     }
-}
-
-fn handle_do(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
-    let mut evaled_x = Ok(Nil());
-    for x in forms {
-        evaled_x = EVAL(&x, env);
-        if evaled_x.is_err() {
-            break;
-        }
-    }
-    evaled_x
 }
 
 fn handle_if(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
