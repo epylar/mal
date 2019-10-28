@@ -13,7 +13,7 @@ pub enum MalExpression {
     FnFunction {
         binds: Rc<Vec<MalExpression>>,
         ast: Rc<MalExpression>,
-        outer_env: Env,
+        outer_env: Rc<Env>,
     },
     RustFunction(fn(Vec<MalExpression>) -> MalRet),
     Nil(),

@@ -190,7 +190,7 @@ pub fn core_ns() -> Env {
         Ok(Nil())
     }
 
-    let mut env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
+    let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
     };

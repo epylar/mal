@@ -11,12 +11,12 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn simple_new(outer: Option<Env>) -> Result<Env, String> {
+    pub fn simple_new(outer: Option<Rc<Env>>) -> Result<Env, String> {
         Env::new(outer, Rc::new(vec![]), Rc::new(vec![]))
     }
 
     pub fn new(
-        outer: Option<Env>,
+        outer: Option<Rc<Env>>,
         binds: Rc<Vec<String>>,
         exprs: Rc<Vec<MalExpression>>,
     ) -> Result<Env, String> {
@@ -38,15 +38,12 @@ impl Env {
             }
         }
         Ok(Env {
-            outer: match outer {
-                Some(e) => Some(Rc::new(e)),
-                None => None,
-            },
+            outer,
             data: Rc::new(RefCell::new(data)),
         })
     }
 
-    pub fn set(&mut self, key: &str, val: MalExpression) {
+    pub fn set(&self, key: &str, val: MalExpression) {
         self.data.borrow_mut().insert(key.to_string(), val);
     }
 

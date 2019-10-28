@@ -20,7 +20,7 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
+fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     //        println!("EVAL: {}", pr_str(&ast));
     match ast.clone() {
         List(l) => {
@@ -34,7 +34,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                         return Err("def! requires exactly 2 arguments".to_string());
                     }
                     let key = &l[1];
-                    let value = EVAL(&l[2], env)?;
+                    let value = EVAL(&l[2], env.clone())?;
                     match key {
                         Symbol(key_symbol) => {
                             env.set(&key_symbol, value.clone());
@@ -48,10 +48,10 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                 }
                 Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
-                        let mut newenv = Env::simple_new(Some(env.clone()))?;
+                        let newenv = Rc::new(Env::simple_new(Some(env))?);
                         for chunk in l1.chunks(2) {
                             if let Symbol(l_sym) = &chunk[0] {
-                                let l_evaled_val = EVAL(&chunk[1], &mut newenv)?;
+                                let l_evaled_val = EVAL(&chunk[1], newenv.clone())?;
                                 newenv.set(l_sym, l_evaled_val);
                             } else {
                                 return Err(format!(
@@ -60,13 +60,13 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                 ));
                             }
                         }
-                        EVAL(l2, &mut newenv)
+                        EVAL(l2, newenv)
                     }
                     _ => {
                         Err("let* needs 2 arguments; first should be a list or vector".to_string())
                     }
                 },
-                Symbol(_) => match EVAL(l0, env) {
+                Symbol(_) => match EVAL(l0, env.clone()) {
                     Ok(RustFunction(f)) => {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new((&l[1..]).to_vec())), env)?
@@ -86,7 +86,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
     }
 }
 
-fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
+fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     //    println!("eval_ast: {}", pr_str(&ast));
     match ast.clone() {
         Symbol(symbol) => {
@@ -96,16 +96,25 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
-        List(list) => match iterate_rc_vec(list).map(|x| EVAL(&x, env)).collect() {
+        List(list) => match iterate_rc_vec(list)
+            .map(|x| EVAL(&x, env.clone()))
+            .collect()
+        {
             Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        Vector(vector) => match iterate_rc_vec(vector).map(|x| EVAL(&x, env)).collect() {
+        Vector(vector) => match iterate_rc_vec(vector)
+            .map(|x| EVAL(&x, env.clone()))
+            .collect()
+        {
             Ok(collected) => Ok(Vector(Rc::new(collected))),
             Err(e) => Err(e),
         },
         HashTable(hash_table) => {
-            match iterate_rc_vec(hash_table).map(|x| EVAL(&x, env)).collect() {
+            match iterate_rc_vec(hash_table)
+                .map(|x| EVAL(&x, env.clone()))
+                .collect()
+            {
                 Ok(collected) => Ok(HashTable(Rc::new(collected))),
                 Err(e) => Err(e),
             }
@@ -120,7 +129,7 @@ fn PRINT(form: MalRet) -> Result<String, String> {
 }
 
 fn rep(line: &str, env: &mut Env) -> Result<String, String> {
-    PRINT(EVAL(&READ(line)?, env))
+    PRINT(EVAL(&READ(line)?, Rc::new(env.clone())))
 }
 
 fn plus(args: Vec<MalExpression>) -> MalRet {
@@ -163,7 +172,7 @@ fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpre
 }
 
 fn init_env() -> Result<Env, String> {
-    let mut env = Env::simple_new(None)?;
+    let env = Env::simple_new(None)?;
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));

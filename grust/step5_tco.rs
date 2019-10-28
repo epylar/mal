@@ -22,30 +22,32 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
+fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
     // println!("EVAL: {}", pr_str(&ast));
-    let mut ast: MalExpression = ast.clone();
-    let mut env: Env = env.clone();
+    let mut eval_env = env.clone();
     loop {
         match ast.clone() {
             List(forms) => {
                 if forms.is_empty() {
                     return Ok(ast.clone());
                 }
-                let form0 = &forms[0];
-                let rest_forms = &forms[1..];
+                let form0 = forms[0].clone();
+                let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
                 match form0 {
                     Symbol(sym) if sym == "def!" => {
-                        return handle_def(rest_forms.to_vec(), &mut env)
+                        return handle_def(rest_forms.to_vec(), eval_env)
                     }
                     Symbol(sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
                         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
-                            let mut newenv =
-                                Env::new(Some(env.clone()), Rc::new(vec![]), Rc::new(vec![]))?;
+                            eval_env = Rc::new(Env::new(
+                                Some(env.clone()),
+                                Rc::new(vec![]),
+                                Rc::new(vec![]),
+                            )?);
                             for chunk in f0.chunks(2) {
                                 if let Symbol(key) = &chunk[0] {
-                                    let val = EVAL(&chunk[1], &mut newenv)?;
-                                    newenv.set(key, val);
+                                    let val = EVAL(chunk[1].clone(), eval_env.clone())?;
+                                    eval_env.set(key, val);
                                 } else {
                                     return Err(format!(
                                         "let* sub-argument not a symbol: {}",
@@ -54,7 +56,6 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                 }
                             }
                             ast = f1.clone();
-                            env = newenv;
                             continue;
                         }
                         _ => {
@@ -65,7 +66,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                     Symbol(sym) if sym == "do" => {
                         if !rest_forms.is_empty() {
                             for x in rest_forms[0..(rest_forms.len() - 1)].iter() {
-                                let evaled = EVAL(&x, &mut env);
+                                let evaled = EVAL(x.clone(), eval_env.clone());
                                 if evaled.is_err() {
                                     return evaled;
                                 }
@@ -80,7 +81,7 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                     Symbol(sym) if sym == "if" => {
                         return match (rest_forms.get(0), rest_forms.get(1)) {
                             (Some(condition), Some(eval_if_true)) => {
-                                if EVAL(condition, &mut env)?.is_true_in_if() {
+                                if EVAL(condition.clone(), eval_env.clone())?.is_true_in_if() {
                                     ast = eval_if_true.clone();
                                     continue;
                                 } else {
@@ -96,12 +97,10 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                             _ => Err("if expression must have at least two arguments".to_string()),
                         }
                     }
-                    Symbol(sym) if sym == "fn*" => {
-                        return handle_fn(rest_forms.to_vec(), env.clone())
-                    }
+                    Symbol(sym) if sym == "fn*" => return handle_fn(rest_forms.to_vec(), eval_env),
                     RustFunction(f) => {
                         if let List(rest_evaled) =
-                            eval_ast(&List(Rc::new(rest_forms.to_vec())), &mut env)?
+                            eval_ast(&List(Rc::new(rest_forms.to_vec())), eval_env)?
                         {
                             return f(rest_evaled.to_vec());
                         } else {
@@ -110,11 +109,11 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                     }
                     FnFunction {
                         binds,
-                        ast,
+                        ast: fn_ast,
                         outer_env,
                     } => {
                         let rest_evaled =
-                            eval_ast(&List(Rc::new((&forms[1..]).to_vec())), &mut env)?;
+                            eval_ast(&List(Rc::new((&forms[1..]).to_vec())), eval_env)?;
                         match rest_evaled {
                             List(rest_evaled_vec) => {
                                 let binds_vec_string: Vec<String> = binds
@@ -127,42 +126,45 @@ fn EVAL(ast: &MalExpression, env: &mut Env) -> MalRet {
                                         ),
                                     })
                                     .collect();
-                                let mut fn_env = Env::new(
+                                let fn_env = Env::new(
                                     Some(outer_env.clone()),
                                     Rc::new(binds_vec_string),
                                     rest_evaled_vec,
                                 )?;
-                                return EVAL(&ast, &mut fn_env);
+                                let tmp: MalExpression = (*fn_ast).clone();
+                                ast = tmp;
+                                eval_env = Rc::new(fn_env);
+                                continue;
                             }
                             _ => panic!("eval_ast(List) => non-List"),
                         }
                     }
-                    Symbol(_) | List(_) => match EVAL(form0, &mut env) {
+                    Symbol(_) | List(_) => match EVAL(form0, eval_env.clone()) {
                         Ok(form0_evaled) => {
                             let mut spliced_ast = vec![form0_evaled];
                             spliced_ast.append(&mut (&forms[1..]).to_vec());
-                            return EVAL(&List(Rc::new(spliced_ast)), &mut env);
+                            return EVAL(List(Rc::new(spliced_ast)), eval_env.clone());
                         }
                         Err(e) => return Err(e),
                     },
                     other => {
                         return Err(format!(
                             "not a symbol, list, or function: {}",
-                            pr_str(other, true)
+                            pr_str(&other, true)
                         ))
                     }
                 }
             }
-            _ => return eval_ast(&ast, &mut env),
+            _ => return eval_ast(&ast, eval_env.clone()),
         }
     }
 }
 
-fn handle_def(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
+fn handle_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(Symbol(f0)), Some(f1)) => {
             let key = f0;
-            let value = EVAL(f1, env)?;
+            let value = EVAL(f1.clone(), env.clone())?;
             env.set(key, value.clone());
             Ok(value)
         }
@@ -170,7 +172,7 @@ fn handle_def(forms: Vec<MalExpression>, env: &mut Env) -> MalRet {
     }
 }
 
-fn handle_fn(forms: Vec<MalExpression>, env: Env) -> MalRet {
+fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(List(f0_v)), Some(f1)) | (Some(Vector(f0_v)), Some(f1)) => Ok(FnFunction {
             binds: f0_v.clone(),
@@ -184,7 +186,7 @@ fn handle_fn(forms: Vec<MalExpression>, env: Env) -> MalRet {
     }
 }
 
-fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
+fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     // println!("eval_ast: {}", pr_str(&ast));
     match ast.clone() {
         Symbol(symbol) => {
@@ -194,20 +196,24 @@ fn eval_ast(ast: &MalExpression, env: &mut Env) -> MalRet {
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
-        List(list) => match iterate_rc_vec(list).map(|x| EVAL(&x, env)).collect() {
+        List(list) => match iterate_rc_vec(list).map(|x| EVAL(x, env.clone())).collect() {
             Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        Vector(vector) => match iterate_rc_vec(vector).map(|x| EVAL(&x, env)).collect() {
+        Vector(vector) => match iterate_rc_vec(vector)
+            .map(|x| EVAL(x, env.clone()))
+            .collect()
+        {
             Ok(collected) => Ok(Vector(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        HashTable(hash_table) => {
-            match iterate_rc_vec(hash_table).map(|x| EVAL(&x, env)).collect() {
-                Ok(collected) => Ok(HashTable(Rc::new(collected))),
-                Err(e) => Err(e),
-            }
-        }
+        HashTable(hash_table) => match iterate_rc_vec(hash_table)
+            .map(|x| EVAL(x, env.clone()))
+            .collect()
+        {
+            Ok(collected) => Ok(HashTable(Rc::new(collected))),
+            Err(e) => Err(e),
+        },
         _ => Ok(ast.clone()),
     }
 }
@@ -217,21 +223,21 @@ fn PRINT(form: MalRet) -> Result<String, String> {
     Ok(pr_str(&form?, true))
 }
 
-fn rep(line: &str, env: &mut Env) -> Result<String, String> {
-    PRINT(EVAL(&READ(line)?, env))
+fn rep(line: &str, env: Rc<Env>) -> Result<String, String> {
+    PRINT(EVAL(READ(line)?, env))
 }
 
 fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
-    let mut env = core::core_ns();
+    let env = Rc::new(core::core_ns());
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
     }
 
     // functions defined in MAL
-    match rep("(def! not (fn* (a) (if a false true)))", &mut env) {
+    match rep("(def! not (fn* (a) (if a false true)))", env.clone()) {
         Ok(_) => {}
         Err(e) => panic!("Error in internal function setup: {}", e),
     }
@@ -243,7 +249,7 @@ fn main() {
                 rl.add_history_entry(&line);
                 rl.save_history(".mal-history").unwrap();
                 if !line.is_empty() {
-                    match rep(&line.to_owned(), &mut env) {
+                    match rep(&line.to_owned(), env.clone()) {
                         Ok(result) => println!("{}", result),
                         Err(e) => println!("error: {}", e),
                     }
@@ -266,10 +272,10 @@ mod tests {
 
     #[test]
     fn test_do() {
-        let mut env = core::core_ns();
-        assert_eq!(rep("(do 1 2 3)", &mut env), Ok("3".to_string()));
-        assert_eq!(rep("(do 2)", &mut env), Ok("2".to_string()));
-        assert_eq!(rep("(do)", &mut env), Ok("nil".to_string()));
-        assert_eq!(rep("(do 4 (+ 1 2))", &mut env), Ok("3".to_string()));
+        let env = Rc::new(core::core_ns());
+        assert_eq!(rep("(do 1 2 3)", env.clone()), Ok("3".to_string()));
+        assert_eq!(rep("(do 2)", env.clone()), Ok("2".to_string()));
+        assert_eq!(rep("(do)", env.clone()), Ok("nil".to_string()));
+        assert_eq!(rep("(do 4 (+ 1 2))", env.clone()), Ok("3".to_string()));
     }
 }
