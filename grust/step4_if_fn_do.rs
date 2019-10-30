@@ -32,11 +32,11 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
             let form0 = &forms[0];
             let rest_forms = &forms[1..];
             match form0 {
-                Symbol(sym) if sym == "def!" => handle_def(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
-                Symbol(sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env.clone()),
+                Symbol(ref sym) if sym == "def!" => handle_def(rest_forms.to_vec(), env),
+                Symbol(ref sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
+                Symbol(ref sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
+                Symbol(ref sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
+                Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env.clone()),
                 RustFunction(f) => {
                     if let List(rest_evaled) = eval_ast(&List(Rc::new(rest_forms.to_vec())), env)? {
                         f(rest_evaled.to_vec())
@@ -166,7 +166,7 @@ fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
 fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     // println!("eval_ast: {}", pr_str(&ast));
     match ast.clone() {
-        Symbol(symbol) => {
+        Symbol(ref symbol) => {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result),

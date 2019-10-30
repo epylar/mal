@@ -1,6 +1,5 @@
 use crate::env::Env;
 use core::fmt;
-use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -23,7 +22,7 @@ pub enum MalExpression {
 }
 
 #[derive(Clone)]
-pub struct Closure(pub Rc<RefCell<dyn Fn(MalExpression) -> MalRet>>);
+pub struct Closure(pub Rc<dyn Fn(MalExpression, Rc<Env>) -> MalRet>);
 
 impl fmt::Debug for Closure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

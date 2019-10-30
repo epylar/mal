@@ -40,10 +40,10 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
                 match form0 {
-                    Symbol(sym) if sym == "def!" => {
+                    Symbol(ref sym) if sym == "def!" => {
                         return handle_def(rest_forms.to_vec(), loop_env)
                     }
-                    Symbol(sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
+                    Symbol(ref sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
                         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
                             loop_env = Rc::new(Env::new(
                                 Some(env.clone()),
@@ -69,7 +69,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                                 .to_string())
                         }
                     },
-                    Symbol(sym) if sym == "do" => {
+                    Symbol(ref sym) if sym == "do" => {
                         if !rest_forms.is_empty() {
                             for x in rest_forms[0..(rest_forms.len() - 1)].iter() {
                                 let evaled = EVAL(x.clone(), loop_env.clone());
@@ -84,7 +84,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             return Ok(Nil());
                         }
                     }
-                    Symbol(sym) if sym == "if" => {
+                    Symbol(ref sym) if sym == "if" => {
                         return match (rest_forms.get(0), rest_forms.get(1)) {
                             (Some(condition), Some(eval_if_true)) => {
                                 if EVAL(condition.clone(), loop_env.clone())?.is_true_in_if() {
@@ -103,7 +103,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             _ => Err("if expression must have at least two arguments".to_string()),
                         }
                     }
-                    Symbol(sym) if sym == "fn*" => return handle_fn(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "fn*" => return handle_fn(rest_forms.to_vec(), loop_env),
                     RustFunction(f) => {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?
@@ -203,7 +203,7 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     //    let ast_str = pr_str(ast, true);
     //    println!("eval_ast: {}", ast_str);
     match ast.clone() {
-        Symbol(symbol) => {
+        Symbol(ref symbol) => {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result),

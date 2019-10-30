@@ -56,4 +56,11 @@ impl Env {
             },
         }
     }
+
+    pub fn get_env_top_level(env: Rc<Env>) -> Rc<Env> {
+        match &env.outer {
+            None => env,
+            Some(e) => Env::get_env_top_level(e.clone())
+        }
+    }
 }

@@ -29,7 +29,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
             }
             let l0 = &l[0];
             match l0 {
-                Symbol(sym) if sym == "def!" => {
+                Symbol(ref sym) if sym == "def!" => {
                     if l.len() != 3 {
                         return Err("def! requires exactly 2 arguments".to_string());
                     }
@@ -46,7 +46,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                         )),
                     }
                 }
-                Symbol(sym) if sym == "let*" => match (l.get(1), l.get(2)) {
+                Symbol(ref sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
                         let newenv = Rc::new(Env::simple_new(Some(env))?);
                         for chunk in l1.chunks(2) {
@@ -89,7 +89,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
 fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     //    println!("eval_ast: {}", pr_str(&ast));
     match ast.clone() {
-        Symbol(symbol) => {
+        Symbol(ref symbol) => {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result),

@@ -57,8 +57,8 @@ fn EVAL(ast: MalExpression, env: &Env) -> MalRet {
 fn eval_ast(ast: MalExpression, env: &Env) -> MalRet {
     //    println!("eval_ast: {}", pr_str(&ast));
     match ast {
-        Symbol(symbol) => {
-            let get = env.get(&symbol);
+        Symbol(ref symbol) => {
+            let get = env.get(&(symbol.clone()));
             match get {
                 Some(result) => Ok(result.clone()),
                 None => Err(format!("symbol {} not found in environment", symbol)),

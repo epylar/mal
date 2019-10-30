@@ -9,7 +9,6 @@ use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use std::cell::RefCell;
 use std::rc::Rc;
 use types::iterate_rc_vec;
 use types::Closure;
@@ -26,7 +25,7 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
+fn EVAL(mut ast: MalExpression, env: Rc<Env>,) -> MalRet {
     //    let ast_str = pr_str(&ast, true);
     //    println!("EVAL: {}", ast_str);
     let mut loop_env = env.clone();
@@ -44,10 +43,10 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
                 match form0 {
-                    Symbol(sym) if sym == "def!" => {
+                    Symbol(ref sym) if sym == "def!" => {
                         return handle_def(rest_forms.to_vec(), loop_env)
                     }
-                    Symbol(sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
+                    Symbol(ref sym) if sym == "let*" => match (rest_forms.get(0), rest_forms.get(1)) {
                         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
                             loop_env = Rc::new(Env::new(
                                 Some(env.clone()),
@@ -73,7 +72,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                                 .to_string())
                         }
                     },
-                    Symbol(sym) if sym == "do" => {
+                    Symbol(ref sym) if sym == "do" => {
                         if !rest_forms.is_empty() {
                             for x in rest_forms[0..(rest_forms.len() - 1)].iter() {
                                 let evaled = EVAL(x.clone(), loop_env.clone());
@@ -88,7 +87,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             return Ok(Nil());
                         }
                     }
-                    Symbol(sym) if sym == "if" => {
+                    Symbol(ref sym) if sym == "if" => {
                         return match (rest_forms.get(0), rest_forms.get(1)) {
                             (Some(condition), Some(eval_if_true)) => {
                                 if EVAL(condition.clone(), loop_env.clone())?.is_true_in_if() {
@@ -107,7 +106,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             _ => Err("if expression must have at least two arguments".to_string()),
                         }
                     }
-                    Symbol(sym) if sym == "fn*" => return handle_fn(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "fn*" => return handle_fn(rest_forms.to_vec(), loop_env),
                     RustFunction(f) => {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?
@@ -119,8 +118,8 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     }
                     RustClosure(c) => match rest_forms.get(0) {
                         Some(arg) => {
-                            let abc = c.0.borrow_mut();
-                            return (abc)(EVAL(arg.clone(), loop_env.clone())?);
+                            let abc = c.0;
+                            return (abc)(EVAL(arg.clone(), loop_env.clone())?, Env::get_env_top_level(loop_env.clone()));
                         }
                         None => return Err("argument required".to_string()),
                     },
@@ -206,7 +205,7 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     //    let ast_str = pr_str(ast, true);
     //    println!("eval_ast: {}", ast_str);
     match ast.clone() {
-        Symbol(symbol) => {
+        Symbol(ref symbol) => {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result),
@@ -248,8 +247,7 @@ fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     let env = Rc::new(core::core_ns());
-    let env_clone = env.clone();
-    let rust_eval_closure = RustClosure(Closure(Rc::new(RefCell::new(|ast| EVAL(ast, *(&env_clone))))));
+    let rust_eval_closure = RustClosure(Closure(Rc::new(move |ast, env| EVAL(ast, env))));
     env.set("eval", rust_eval_closure);
 
     if rl.load_history(".mal-history").is_err() {
