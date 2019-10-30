@@ -1,5 +1,6 @@
 use crate::env::Env;
 use crate::printer::pr_str;
+use crate::reader::read_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
     Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
@@ -190,6 +191,13 @@ pub fn core_ns() -> Env {
         Ok(Nil())
     }
 
+    fn read_dash_string(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(MalExpression::String(s)) => read_str(s),
+            _ => Err("read-string requires a string argument".to_string()),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -212,6 +220,7 @@ pub fn core_ns() -> Env {
     env.set("str", RustFunction(str));
     env.set("prn", RustFunction(prn));
     env.set("println", RustFunction(println));
+    env.set("read-string", RustFunction(read_dash_string));
 
     env
 }
