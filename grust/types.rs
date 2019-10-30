@@ -23,7 +23,7 @@ pub enum MalExpression {
 }
 
 #[derive(Clone)]
-pub struct Closure(pub Rc<RefCell<dyn FnMut(MalExpression, Rc<Env>) -> MalRet>>);
+pub struct Closure(pub Rc<RefCell<dyn Fn(MalExpression) -> MalRet>>);
 
 impl fmt::Debug for Closure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -120,7 +120,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     RustClosure(c) => match rest_forms.get(0) {
                         Some(arg) => {
                             let abc = c.0.borrow_mut();
-                            return (abc)(EVAL(arg.clone(), loop_env.clone())?, loop_env.clone());
+                            return (abc)(EVAL(arg.clone(), loop_env.clone())?);
                         }
                         None => return Err("argument required".to_string()),
                     },
@@ -248,7 +248,8 @@ fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     let env = Rc::new(core::core_ns());
-    let rust_eval_closure = RustClosure(Closure(Rc::new(RefCell::new(|ast, env| EVAL(ast, env)))));
+    let env_clone = env.clone();
+    let rust_eval_closure = RustClosure(Closure(Rc::new(RefCell::new(|ast| EVAL(ast, *(&env_clone))))));
     env.set("eval", rust_eval_closure);
 
     if rl.load_history(".mal-history").is_err() {
