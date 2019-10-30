@@ -7,6 +7,7 @@ use crate::types::MalExpression::{
 };
 use crate::types::MalRet;
 use itertools::Itertools;
+use std::fs;
 use std::rc::Rc;
 
 impl MalExpression {
@@ -198,6 +199,16 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn slurp(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(MalExpression::String(filename)) => match fs::read_to_string(filename) {
+                Ok(contents) => Ok(MalExpression::String(contents)),
+                Err(e) => Err(format!("error reading file {}: {}", filename, e)),
+            },
+            _ => Err("read-string requires a string argument".to_string()),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -221,6 +232,7 @@ pub fn core_ns() -> Env {
     env.set("prn", RustFunction(prn));
     env.set("println", RustFunction(println));
     env.set("read-string", RustFunction(read_dash_string));
+    env.set("slurp", RustFunction(slurp));
 
     env
 }
