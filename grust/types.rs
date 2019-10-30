@@ -1,4 +1,6 @@
 use crate::env::Env;
+use core::fmt;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -16,7 +18,17 @@ pub enum MalExpression {
         outer_env: Rc<Env>,
     },
     RustFunction(fn(Vec<MalExpression>) -> MalRet),
+    RustClosure(Closure),
     Nil(),
+}
+
+#[derive(Clone)]
+pub struct Closure(pub Rc<RefCell<dyn FnMut(MalExpression, Rc<Env>) -> MalRet>>);
+
+impl fmt::Debug for Closure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#<Rust closure>")
+    }
 }
 
 pub type MalRet = Result<MalExpression, String>;

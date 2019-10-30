@@ -1,6 +1,6 @@
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Boolean, FnFunction, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
+    Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Vector,
 };
 
 pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
@@ -32,12 +32,13 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
             let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
-        RustFunction(_) => "#<native function>".to_string(),
+        RustFunction(_) => "#<Rust unction>".to_string(),
         FnFunction { binds, ast, .. } => format!(
             "#<fn* function: binds = {}; ast = {}>",
             pr_str(&Vector(binds.clone()), print_readably),
             pr_str(ast, print_readably),
         ),
+        RustClosure(_) => "#<Rust closure>".to_string(),
         Boolean(x) => match x {
             true => "true".to_string(),
             false => "false".to_string(),

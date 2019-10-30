@@ -9,10 +9,14 @@ use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use std::cell::RefCell;
 use std::rc::Rc;
 use types::iterate_rc_vec;
+use types::Closure;
 use types::MalExpression;
-use types::MalExpression::{FnFunction, HashTable, List, Nil, RustFunction, Symbol, Vector};
+use types::MalExpression::{
+    FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Vector,
+};
 use types::MalRet;
 
 #[allow(non_snake_case)]
@@ -108,19 +112,18 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?
                         {
-                            //                            println!(
-                            //                                "applying f({})",
-                            //                                rest_evaled
-                            //                                    .to_vec()
-                            //                                    .iter()
-                            //                                    .map(|x| pr_str(x, true))
-                            //                                    .join(", ")
-                            //                            );
                             return f(rest_evaled.to_vec());
                         } else {
                             panic!("eval_ast List -> non-List")
                         }
                     }
+                    RustClosure(c) => match rest_forms.get(0) {
+                        Some(arg) => {
+                            let abc = c.0.borrow_mut();
+                            return (abc)(EVAL(arg.clone(), loop_env.clone())?, loop_env.clone());
+                        }
+                        None => return Err("argument required".to_string()),
+                    },
                     FnFunction {
                         binds,
                         ast: fn_ast,
@@ -245,13 +248,23 @@ fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     let env = Rc::new(core::core_ns());
+    let rust_eval_closure = RustClosure(Closure(Rc::new(RefCell::new(|ast, env| EVAL(ast, env)))));
+    env.set("eval", rust_eval_closure);
 
     if rl.load_history(".mal-history").is_err() {
         eprintln!("No previous history.");
     }
 
     // functions defined in MAL
-    match rep("(def! not (fn* (a) (if a false true)))", env.clone()) {
+    match rep(r#"(def! not (fn* (a) (if a false true)))"#, env.clone()) {
+        Ok(_) => {}
+        Err(e) => panic!("Error in internal function setup: {}", e),
+    }
+
+    match rep(
+        r#"(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))"#,
+        env.clone(),
+    ) {
         Ok(_) => {}
         Err(e) => panic!("Error in internal function setup: {}", e),
     }
