@@ -17,6 +17,7 @@ use types::MalExpression::{
     FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Vector,
 };
 use types::MalRet;
+use crate::types::MalExpression::Atom;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -112,6 +113,26 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     }
                     Symbol(ref sym) if sym == "fn*" => {
                         return handle_fn(rest_forms.to_vec(), loop_env)
+                    },
+                    Symbol(ref sym) if sym == "swap!" => {
+                        let rest_forms_evaled = eval_ast(&List(Rc::new(rest_forms.clone())), loop_env.clone())?;
+                        let rest_forms_evaled_vec: Vec<MalExpression> = iterate_rc_vec(match rest_forms_evaled {
+                            List(l) => l,
+                            _ => panic!("EVAL List -> non-list")
+                        }).collect();
+                        match (rest_forms_evaled_vec.get(0), rest_forms_evaled_vec.get(1)) {
+                            (Some(Atom(a)), Some(b)) => {
+                                let atom_val = a.borrow().clone();
+                                let mut args = vec![b.clone(), atom_val.clone()];
+
+                                args.append(&mut (&rest_forms_evaled_vec[2..]).to_vec());
+                                let form_to_eval = List(Rc::new(args));
+                                let replacement = EVAL(form_to_eval, loop_env.clone());
+                                a.replace(replacement.clone()?);
+                                return replacement
+                            },
+                            _ => return Err(format!("swap! -- bad arguments: {:?}", rest_forms))
+                        }
                     }
                     RustFunction(f) => {
                         if let List(rest_evaled) =

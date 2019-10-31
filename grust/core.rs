@@ -2,9 +2,7 @@ use crate::env::Env;
 use crate::printer::pr_str;
 use crate::reader::read_str;
 use crate::types::MalExpression;
-use crate::types::MalExpression::{
-    Atom, Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
-};
+use crate::types::MalExpression::{Atom, Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector};
 use crate::types::MalRet;
 use itertools::Itertools;
 use std::cell::RefCell;
