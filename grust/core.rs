@@ -225,6 +225,24 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn deref(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Atom(a)) => Ok(a.borrow().clone()),
+            None => Err("deref requires an argument".to_string()),
+            _ => Ok(Boolean(false)),
+        }
+    }
+
+    fn reset(args: Vec<MalExpression>) -> MalRet {
+        match (args.get(0), args.get(1)) {
+            (Some(Atom(a)), Some(b)) => {
+                a.replace(b.clone());
+                Ok(b.clone())
+            }
+            _ => Err("reset! requires two arguments: atom, new atom contents".to_string()),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -251,6 +269,8 @@ pub fn core_ns() -> Env {
     env.set("slurp", RustFunction(slurp));
     env.set("atom", RustFunction(atom));
     env.set("atom?", RustFunction(atom_q));
+    env.set("deref", RustFunction(deref));
+    env.set("reset!", RustFunction(reset));
 
     env
 }
