@@ -1,6 +1,6 @@
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Vector,
+    Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Vector,
 };
 
 pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
@@ -44,6 +44,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
             false => "false".to_string(),
         },
         Nil() => "nil".to_string(),
+        Atom(a) => format!("(atom {})", pr_str(&a.borrow(), true)),
     }
 }
 

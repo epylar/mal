@@ -1,5 +1,6 @@
 use crate::env::Env;
 use core::fmt;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub enum MalExpression {
         ast: Rc<MalExpression>,
         outer_env: Rc<Env>,
     },
+    Atom(Rc<RefCell<MalExpression>>),
     RustFunction(fn(Vec<MalExpression>) -> MalRet),
     RustClosure(Closure),
     Nil(),

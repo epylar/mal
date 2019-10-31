@@ -3,10 +3,11 @@ use crate::printer::pr_str;
 use crate::reader::read_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
+    Atom, Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
 };
 use crate::types::MalRet;
 use itertools::Itertools;
+use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
 
@@ -209,6 +210,13 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn atom(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(expression) => Ok(Atom(Rc::new(RefCell::new(expression.clone())))),
+            None => Err("atom requires an argument".to_string()),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -233,6 +241,7 @@ pub fn core_ns() -> Env {
     env.set("println", RustFunction(println));
     env.set("read-string", RustFunction(read_dash_string));
     env.set("slurp", RustFunction(slurp));
+    env.set("atom", RustFunction(atom));
 
     env
 }
