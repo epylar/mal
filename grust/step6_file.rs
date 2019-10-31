@@ -290,24 +290,35 @@ fn main() {
         Err(e) => panic!("Error in internal function setup: {}", e),
     }
 
-    loop {
-        let readline = rl.readline("user> ");
-        match readline {
-            Ok(line) => {
-                rl.add_history_entry(&line);
-                rl.save_history(".mal-history").unwrap();
-                if !line.is_empty() {
-                    match rep(&line.to_owned(), env.clone()) {
-                        Ok(result) => println!("{}", result),
-                        Err(e) => println!("error: {}", e),
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(filename) = args.get(1) {
+        let quoted_filename: &str = &crate::printer::pr_str_slice(filename, true);
+        let mal_load_file: &str = &format!("(load-file {})", quoted_filename);
+        match rep(mal_load_file, env.clone()) {
+            Err(e) => panic!("Error loading file {}: {}", filename, e),
+            _ => ()
+        }
+        // todo add *ARGV*
+    } else {
+        loop {
+            let readline = rl.readline("user> ");
+            match readline {
+                Ok(line) => {
+                    rl.add_history_entry(&line);
+                    rl.save_history(".mal-history").unwrap();
+                    if !line.is_empty() {
+                        match rep(&line.to_owned(), env.clone()) {
+                            Ok(result) => println!("{}", result),
+                            Err(e) => println!("error: {}", e),
+                        }
                     }
                 }
-            }
-            Err(ReadlineError::Interrupted) => continue,
-            Err(ReadlineError::Eof) => break,
-            Err(err) => {
-                println!("Error: {:?}", err);
-                break;
+                Err(ReadlineError::Interrupted) => continue,
+                Err(ReadlineError::Eof) => break,
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    break;
+                }
             }
         }
     }

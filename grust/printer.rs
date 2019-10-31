@@ -8,17 +8,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
         Int(i) => i.to_string(),
         Symbol(s) => s.to_string(),
         MalExpression::String(s) => {
-            if s.starts_with("\u{29e}") {
-                format!(":{}", &s[2..])
-            } else if print_readably {
-                "\"".to_owned()
-                    + &s.replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
-                        .replace("\n", "\\n")
-                    + "\""
-            } else {
-                s.to_string()
-            }
+            pr_str_slice(s, print_readably)
         }
         List(l) => {
             let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
@@ -45,6 +35,20 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
         },
         Nil() => "nil".to_string(),
         Atom(a) => format!("(atom {})", pr_str(&a.borrow(), true)),
+    }
+}
+
+pub fn pr_str_slice(input_string: &str, print_readably: bool) -> String {
+    if input_string.starts_with("\u{29e}") {
+        format!(":{}", &input_string[2..])
+    } else if print_readably {
+        "\"".to_owned()
+            + &input_string.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            + "\""
+    } else {
+        input_string.to_string()
     }
 }
 
