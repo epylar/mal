@@ -266,6 +266,10 @@ fn read_atom(reader: &mut Reader) -> MalRet {
                 return Ok(Nil());
             }
 
+            if token.starts_with(";;") {
+                return Ok(Nil());
+            }
+
             match token.chars().next() {
                 None => Err("internal error: empty token".to_string()),
                 Some('"') => match unescape_string(&token) {
@@ -329,6 +333,10 @@ mod tests {
         assert_eq!(
             format!("{:?}", read_str("\"abc")),
             r#"Err("invalid or unbalanced string \"abc")"#
+        );
+        assert_eq!(
+            format!("{:?}", read_str(";; this is a comment")),
+            r#"Ok(Nil)"#
         );
     }
 }
