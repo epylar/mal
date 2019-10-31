@@ -217,6 +217,14 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn atom_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Atom(_)) => Ok(Boolean(true)),
+            None => Err("atom? requires an argument".to_string()),
+            _ => Ok(Boolean(false)),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -242,6 +250,7 @@ pub fn core_ns() -> Env {
     env.set("read-string", RustFunction(read_dash_string));
     env.set("slurp", RustFunction(slurp));
     env.set("atom", RustFunction(atom));
+    env.set("atom?", RustFunction(atom_q));
 
     env
 }
