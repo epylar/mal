@@ -264,15 +264,7 @@ fn main() {
     }
 
     // functions defined in MAL
-    match rep(r#"(def! not (fn* (a) (if a false true)))"#, env.clone()) {
-        Ok(_) => {}
-        Err(e) => panic!("Error in internal function setup: {}", e),
-    }
-
-    match rep(
-        r#"(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))"#,
-        env.clone(),
-    ) {
+    match rep(r#"(do (def! not (fn* (a) (if a false true))) (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)"))))))"#, env.clone()) {
         Ok(_) => {}
         Err(e) => panic!("Error in internal function setup: {}", e),
     }
