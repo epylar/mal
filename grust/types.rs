@@ -18,6 +18,7 @@ pub enum MalExpression {
         outer_env: Rc<Env>,
     },
     Atom(Rc<RefCell<MalExpression>>),
+    Tco(Rc<MalExpression>, Rc<Env>), // for tail call optimization; loop again in EVAL
     RustFunction(fn(Vec<MalExpression>) -> MalRet),
     RustClosure(Closure),
     Nil(),

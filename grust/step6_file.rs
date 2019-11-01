@@ -37,7 +37,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         //        }
         //        loop_count = loop_count + 1;
         match ast.clone() {
-            List(forms) => {
+            let loop_result: MalExpression = List(forms) => {
                 if forms.is_empty() {
                     return Ok(ast.clone());
                 }
