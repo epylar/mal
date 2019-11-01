@@ -35,7 +35,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         match ast.clone() {
             List(forms) => {
                 if forms.is_empty() {
-                    return Ok(ast.clone());
+                    return Ok(ast);
                 }
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
@@ -174,7 +174,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     }
                 }
             }
-            _ => return eval_ast(&ast, loop_env.clone()),
+            _ => return eval_ast(&ast, loop_env),
         }
     }
 }
@@ -293,6 +293,6 @@ mod tests {
     #[test]
     fn test_do() {
         let env = Rc::new(core::core_ns());
-        assert_eq!(rep("(do (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc))))) (sum2 50 0))", env.clone()), Ok("1275".to_string()));
+        assert_eq!(rep("(do (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc))))) (sum2 50 0))", env), Ok("1275".to_string()));
     }
 }

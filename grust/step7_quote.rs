@@ -29,7 +29,7 @@ fn READ(input: &str) -> MalRet {
 fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
     //    let ast_str = pr_str(&ast, true);
     //    println!("EVAL: {}", ast_str);
-    let mut loop_env = env.clone();
+    let mut loop_env = env;
     //    let mut loop_count = 0;
     'tco: loop {
         //        if (loop_count > 0) {
@@ -39,7 +39,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         match ast.clone() {
             List(forms) => {
                 if forms.is_empty() {
-                    return Ok(ast.clone());
+                    return Ok(ast);
                 }
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
@@ -64,7 +64,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             let abc = c.0;
                             return (abc)(
                                 EVAL(arg.clone(), loop_env.clone())?,
-                                Env::get_env_top_level(loop_env.clone()),
+                                Env::get_env_top_level(loop_env),
                             );
                         }
                         None => return Err("argument required".to_string()),
@@ -124,7 +124,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     x => return x,
                 }
             }
-            _ => return eval_ast(&ast, loop_env.clone()),
+            _ => return eval_ast(&ast, loop_env),
         }
     }
 }
@@ -132,11 +132,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
 fn handle_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
-            let let_env = Rc::new(Env::new(
-                Some(env.clone()),
-                Rc::new(vec![]),
-                Rc::new(vec![]),
-            )?);
+            let let_env = Rc::new(Env::new(Some(env), Rc::new(vec![]), Rc::new(vec![]))?);
             for chunk in f0.chunks(2) {
                 if let Symbol(key) = &chunk[0] {
                     let val = EVAL(chunk[1].clone(), let_env.clone())?;
@@ -148,7 +144,7 @@ fn handle_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                     ));
                 }
             }
-            Ok(Tco(Box::new(f1.clone()), let_env.clone()))
+            Ok(Tco(Box::new(f1.clone()), let_env))
         }
         _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
     }
@@ -163,9 +159,9 @@ fn handle_do(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             }
         }
 
-        Ok(Tco(Box::new(forms[forms.len() - 1].clone()), env.clone()))
+        Ok(Tco(Box::new(forms[forms.len() - 1].clone()), env))
     } else {
-        return Ok(Nil());
+        Ok(Nil())
     }
 }
 
@@ -173,10 +169,10 @@ fn handle_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(condition), Some(eval_if_true)) => {
             if EVAL(condition.clone(), env.clone())?.is_true_in_if() {
-                Ok(Tco(Box::new(eval_if_true.clone()), env.clone()))
+                Ok(Tco(Box::new(eval_if_true.clone()), env))
             } else {
                 match forms.get(2) {
-                    Some(eval_if_false) => Ok(Tco(Box::new(eval_if_false.clone()), env.clone())),
+                    Some(eval_if_false) => Ok(Tco(Box::new(eval_if_false.clone()), env)),
                     None => Ok(Nil()),
                 }
             }
@@ -207,15 +203,15 @@ fn handle_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms_evaled_vec.get(0), forms_evaled_vec.get(1)) {
         (Some(Atom(a)), Some(b)) => {
             let atom_val = a.borrow().clone();
-            let mut args = vec![b.clone(), atom_val.clone()];
+            let mut args = vec![b.clone(), atom_val];
 
             args.append(&mut (&forms_evaled_vec[2..]).to_vec());
             let form_to_eval = List(Rc::new(args));
-            let replacement = EVAL(form_to_eval, env.clone());
+            let replacement = EVAL(form_to_eval, env);
             a.replace(replacement.clone()?);
-            return replacement;
+            replacement
         }
-        _ => return Err(format!("swap! -- bad arguments: {:?}", forms)),
+        _ => Err(format!("swap! -- bad arguments: {:?}", forms)),
     }
 }
 
@@ -279,7 +275,7 @@ fn main() {
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     let env = Rc::new(core::core_ns());
-    let rust_eval_closure = RustClosure(Closure(Rc::new(move |ast, env| EVAL(ast, env))));
+    let rust_eval_closure = RustClosure(Closure(Rc::new(EVAL)));
     env.set("eval", rust_eval_closure);
 
     if rl.load_history(".mal-history").is_err() {
@@ -312,9 +308,8 @@ fn main() {
     if let Some(filename) = args.get(1) {
         let quoted_filename: &str = &crate::printer::pr_str_slice(filename, true);
         let mal_load_file: &str = &format!("(load-file {})", quoted_filename);
-        match rep(mal_load_file, env.clone()) {
-            Err(e) => panic!("Error loading file {}: {}", filename, e),
-            _ => (),
+        if let Err(e) = rep(mal_load_file, env) {
+            panic!("Error loading file {}: {}", filename, e)
         }
     } else {
         loop {
@@ -349,6 +344,6 @@ mod tests {
     #[test]
     fn test_do() {
         let env = Rc::new(core::core_ns());
-        assert_eq!(rep("(do (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc))))) (sum2 50 0))", env.clone()), Ok("1275".to_string()));
+        assert_eq!(rep("(do (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc))))) (sum2 50 0))", env), Ok("1275".to_string()));
     }
 }

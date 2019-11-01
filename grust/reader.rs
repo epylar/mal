@@ -51,7 +51,7 @@ fn tokenize(line: &str) -> Vec<String> {
                 && match_str != "\r"
                 && match_str != "\n"
                 && match_str != "\r\n"
-                && !match_str.starts_with(";")
+                && !match_str.starts_with(';')
             {
                 //                println!("TOKEN: {}", x.as_str())
                 vec.push(x.as_str().to_string());

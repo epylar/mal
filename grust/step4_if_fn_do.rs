@@ -36,7 +36,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                 Symbol(ref sym) if sym == "let*" => handle_let(rest_forms.to_vec(), env),
                 Symbol(ref sym) if sym == "do" => handle_do(rest_forms.to_vec(), env),
                 Symbol(ref sym) if sym == "if" => handle_if(rest_forms.to_vec(), env),
-                Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env.clone()),
+                Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), env),
                 RustFunction(f) => {
                     if let List(rest_evaled) = eval_ast(&List(Rc::new(rest_forms.to_vec())), env)? {
                         f(rest_evaled.to_vec())
@@ -66,7 +66,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                                 Rc::new(binds_vec_string),
                                 rest_evaled_vec,
                             )?);
-                            EVAL(&ast, fn_env.clone())
+                            EVAL(&ast, fn_env)
                         }
                         _ => panic!("eval_ast(List) => non-List"),
                     }
@@ -137,7 +137,7 @@ fn handle_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(condition), Some(eval_if_true)) => {
             if EVAL(condition, env.clone())?.is_true_in_if() {
-                EVAL(eval_if_true, env.clone())
+                EVAL(eval_if_true, env)
             } else {
                 match forms.get(2) {
                     Some(eval_if_false) => EVAL(eval_if_false, env),
@@ -258,6 +258,6 @@ mod tests {
         assert_eq!(rep("(do 1 2 3)", env.clone()), Ok("3".to_string()));
         assert_eq!(rep("(do 2)", env.clone()), Ok("2".to_string()));
         assert_eq!(rep("(do)", env.clone()), Ok("nil".to_string()));
-        assert_eq!(rep("(do 4 (+ 1 2))", env.clone()), Ok("3".to_string()));
+        assert_eq!(rep("(do 4 (+ 1 2))", env), Ok("3".to_string()));
     }
 }
