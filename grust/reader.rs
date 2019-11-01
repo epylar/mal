@@ -47,7 +47,12 @@ fn tokenize(line: &str) -> Vec<String> {
     for c in re.captures_iter(line) {
         if let Some(x) = c.name("token") {
             let match_str = x.as_str();
-            if match_str != "" && match_str != "\r" && match_str != "\n" && match_str != "\r\n" {
+            if match_str != ""
+                && match_str != "\r"
+                && match_str != "\n"
+                && match_str != "\r\n"
+                && !match_str.starts_with(";")
+            {
                 //                println!("TOKEN: {}", x.as_str())
                 vec.push(x.as_str().to_string());
             }
@@ -266,10 +271,6 @@ fn read_atom(reader: &mut Reader) -> MalRet {
                 return Ok(Nil());
             }
 
-            if token.starts_with(";;") {
-                return Ok(Nil());
-            }
-
             match token.chars().next() {
                 None => Err("internal error: empty token".to_string()),
                 Some('"') => match unescape_string(&token) {
@@ -333,10 +334,6 @@ mod tests {
         assert_eq!(
             format!("{:?}", read_str("\"abc")),
             r#"Err("invalid or unbalanced string \"abc")"#
-        );
-        assert_eq!(
-            format!("{:?}", read_str(";; this is a comment")),
-            r#"Ok(Nil)"#
         );
     }
 }

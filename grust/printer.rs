@@ -7,9 +7,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
     match expression {
         Int(i) => i.to_string(),
         Symbol(s) => s.to_string(),
-        MalExpression::String(s) => {
-            pr_str_slice(s, print_readably)
-        }
+        MalExpression::String(s) => pr_str_slice(s, print_readably),
         List(l) => {
             let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("({})", middle.join(" "))
@@ -43,9 +41,10 @@ pub fn pr_str_slice(input_string: &str, print_readably: bool) -> String {
         format!(":{}", &input_string[2..])
     } else if print_readably {
         "\"".to_owned()
-            + &input_string.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
+            + &input_string
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
             + "\""
     } else {
         input_string.to_string()

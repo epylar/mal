@@ -5,6 +5,7 @@ pub mod reader;
 pub mod types;
 
 use crate::env::Env;
+use crate::types::MalExpression::Atom;
 use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
@@ -17,7 +18,6 @@ use types::MalExpression::{
     FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Vector,
 };
 use types::MalRet;
-use crate::types::MalExpression::Atom;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -113,13 +113,16 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     }
                     Symbol(ref sym) if sym == "fn*" => {
                         return handle_fn(rest_forms.to_vec(), loop_env)
-                    },
+                    }
                     Symbol(ref sym) if sym == "swap!" => {
-                        let rest_forms_evaled = eval_ast(&List(Rc::new(rest_forms.clone())), loop_env.clone())?;
-                        let rest_forms_evaled_vec: Vec<MalExpression> = iterate_rc_vec(match rest_forms_evaled {
-                            List(l) => l,
-                            _ => panic!("EVAL List -> non-list")
-                        }).collect();
+                        let rest_forms_evaled =
+                            eval_ast(&List(Rc::new(rest_forms.clone())), loop_env.clone())?;
+                        let rest_forms_evaled_vec: Vec<MalExpression> =
+                            iterate_rc_vec(match rest_forms_evaled {
+                                List(l) => l,
+                                _ => panic!("EVAL List -> non-list"),
+                            })
+                            .collect();
                         match (rest_forms_evaled_vec.get(0), rest_forms_evaled_vec.get(1)) {
                             (Some(Atom(a)), Some(b)) => {
                                 let atom_val = a.borrow().clone();
@@ -129,9 +132,9 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                                 let form_to_eval = List(Rc::new(args));
                                 let replacement = EVAL(form_to_eval, loop_env.clone());
                                 a.replace(replacement.clone()?);
-                                return replacement
-                            },
-                            _ => return Err(format!("swap! -- bad arguments: {:?}", rest_forms))
+                                return replacement;
+                            }
+                            _ => return Err(format!("swap! -- bad arguments: {:?}", rest_forms)),
                         }
                     }
                     RustFunction(f) => {
@@ -285,20 +288,35 @@ fn main() {
     }
 
     // functions defined in MAL
-    match rep(r#"(do (def! not (fn* (a) (if a false true))) (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)"))))))"#, env.clone()) {
+    match rep(
+        r#"(do (def! not (fn* (a) (if a false true))) (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)"))))))"#,
+        env.clone(),
+    ) {
         Ok(_) => {}
         Err(e) => panic!("Error in internal function setup: {}", e),
     }
 
     let args: Vec<String> = std::env::args().collect();
+    env.set(
+        "*ARGV*",
+        if args.len() > 2 {
+            let argv_vec: Vec<MalExpression> = (&args[2..])
+                .iter()
+                .map(|x| MalExpression::String(x.to_string()))
+                .collect();
+            List(Rc::new(argv_vec))
+        } else {
+            List(Rc::new(vec![]))
+        },
+    );
+
     if let Some(filename) = args.get(1) {
         let quoted_filename: &str = &crate::printer::pr_str_slice(filename, true);
         let mal_load_file: &str = &format!("(load-file {})", quoted_filename);
         match rep(mal_load_file, env.clone()) {
             Err(e) => panic!("Error loading file {}: {}", filename, e),
-            _ => ()
+            _ => (),
         }
-        // todo add *ARGV*
     } else {
         loop {
             let readline = rl.readline("user> ");
