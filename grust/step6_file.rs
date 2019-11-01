@@ -15,7 +15,7 @@ use types::iterate_rc_vec;
 use types::Closure;
 use types::MalExpression;
 use types::MalExpression::{
-    FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Vector,
+    FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Tco, Vector,
 };
 use types::MalRet;
 
@@ -37,106 +37,19 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         //        }
         //        loop_count = loop_count + 1;
         match ast.clone() {
-            let loop_result: MalExpression = List(forms) => {
+            List(forms) => {
                 if forms.is_empty() {
                     return Ok(ast.clone());
                 }
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
-                match form0 {
-                    Symbol(ref sym) if sym == "def!" => {
-                        return handle_def(rest_forms.to_vec(), loop_env)
-                    }
-                    Symbol(ref sym) if sym == "let*" => {
-                        match (rest_forms.get(0), rest_forms.get(1)) {
-                            (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
-                                loop_env = Rc::new(Env::new(
-                                    Some(env.clone()),
-                                    Rc::new(vec![]),
-                                    Rc::new(vec![]),
-                                )?);
-                                for chunk in f0.chunks(2) {
-                                    if let Symbol(key) = &chunk[0] {
-                                        let val = EVAL(chunk[1].clone(), loop_env.clone())?;
-                                        loop_env.set(key, val);
-                                    } else {
-                                        return Err(format!(
-                                            "let* sub-argument not a symbol: {}",
-                                            pr_str(&chunk[0], true)
-                                        ));
-                                    }
-                                }
-                                ast = f1.clone();
-                                continue 'tco;
-                            }
-                            _ => {
-                                return Err(
-                                    "let* needs 2 arguments; first should be a list or vector"
-                                        .to_string(),
-                                )
-                            }
-                        }
-                    }
-                    Symbol(ref sym) if sym == "do" => {
-                        if !rest_forms.is_empty() {
-                            for x in rest_forms[0..(rest_forms.len() - 1)].iter() {
-                                let evaled = EVAL(x.clone(), loop_env.clone());
-                                if evaled.is_err() {
-                                    return evaled;
-                                }
-                            }
-
-                            ast = rest_forms[rest_forms.len() - 1].clone();
-                        // env unchanged
-                        } else {
-                            return Ok(Nil());
-                        }
-                    }
-                    Symbol(ref sym) if sym == "if" => {
-                        return match (rest_forms.get(0), rest_forms.get(1)) {
-                            (Some(condition), Some(eval_if_true)) => {
-                                if EVAL(condition.clone(), loop_env.clone())?.is_true_in_if() {
-                                    ast = eval_if_true.clone();
-                                    continue 'tco;
-                                } else {
-                                    match rest_forms.get(2) {
-                                        Some(eval_if_false) => {
-                                            ast = eval_if_false.clone();
-                                            continue 'tco;
-                                        }
-                                        None => Ok(Nil()),
-                                    }
-                                }
-                            }
-                            _ => Err("if expression must have at least two arguments".to_string()),
-                        }
-                    }
-                    Symbol(ref sym) if sym == "fn*" => {
-                        return handle_fn(rest_forms.to_vec(), loop_env)
-                    }
-                    Symbol(ref sym) if sym == "swap!" => {
-                        let rest_forms_evaled =
-                            eval_ast(&List(Rc::new(rest_forms.clone())), loop_env.clone())?;
-                        let rest_forms_evaled_vec: Vec<MalExpression> =
-                            iterate_rc_vec(match rest_forms_evaled {
-                                List(l) => l,
-                                _ => panic!("EVAL List -> non-list"),
-                            })
-                            .collect();
-                        match (rest_forms_evaled_vec.get(0), rest_forms_evaled_vec.get(1)) {
-                            (Some(Atom(a)), Some(b)) => {
-                                let atom_val = a.borrow().clone();
-                                let mut args = vec![b.clone(), atom_val.clone()];
-
-                                args.append(&mut (&rest_forms_evaled_vec[2..]).to_vec());
-                                let form_to_eval = List(Rc::new(args));
-                                let replacement = EVAL(form_to_eval, loop_env.clone());
-                                a.replace(replacement.clone()?);
-                                return replacement;
-                            }
-                            _ => return Err(format!("swap! -- bad arguments: {:?}", rest_forms)),
-                        }
-                    }
+                let loop_result: MalRet = match form0 {
+                    Symbol(ref sym) if sym == "def!" => handle_def(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "let*" => handle_let(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "do" => handle_do(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "if" => handle_if(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "swap!" => handle_swap(rest_forms.to_vec(), loop_env),
                     RustFunction(f) => {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?
@@ -201,10 +114,74 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                             pr_str(&other, true)
                         ))
                     }
+                };
+                match loop_result {
+                    Ok(Tco(exp, env)) => {
+                        loop_env = env;
+                        ast = *exp;
+                        continue 'tco;
+                    }
+                    x => return x,
                 }
             }
             _ => return eval_ast(&ast, loop_env.clone()),
         }
+    }
+}
+
+fn handle_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
+            let let_env = Rc::new(Env::new(
+                Some(env.clone()),
+                Rc::new(vec![]),
+                Rc::new(vec![]),
+            )?);
+            for chunk in f0.chunks(2) {
+                if let Symbol(key) = &chunk[0] {
+                    let val = EVAL(chunk[1].clone(), let_env.clone())?;
+                    let_env.set(key, val);
+                } else {
+                    return Err(format!(
+                        "let* sub-argument not a symbol: {}",
+                        pr_str(&chunk[0], true)
+                    ));
+                }
+            }
+            Ok(Tco(Box::new(f1.clone()), let_env.clone()))
+        }
+        _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
+    }
+}
+
+fn handle_do(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    if !forms.is_empty() {
+        for x in forms[0..(forms.len() - 1)].iter() {
+            let evaled = EVAL(x.clone(), env.clone());
+            if evaled.is_err() {
+                return evaled;
+            }
+        }
+
+        Ok(Tco(Box::new(forms[forms.len() - 1].clone()), env.clone()))
+    } else {
+        return Ok(Nil());
+    }
+}
+
+fn handle_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(condition), Some(eval_if_true)) => {
+            if EVAL(condition.clone(), env.clone())?.is_true_in_if() {
+                Ok(Tco(Box::new(eval_if_true.clone()), env.clone()))
+            } else {
+                match forms.get(2) {
+                    Some(eval_if_false) => Ok(Tco(Box::new(eval_if_false.clone()), env.clone())),
+                    None => Ok(Nil()),
+                }
+            }
+        }
+        _ => Err("if expression must have at least two arguments".to_string()),
     }
 }
 
@@ -217,6 +194,28 @@ fn handle_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             Ok(value)
         }
         _ => Err("def! requires 2 arguments; first argument should be a symbol".to_string()),
+    }
+}
+
+fn handle_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    let forms_evaled = eval_ast(&List(Rc::new(forms.clone())), env.clone())?;
+    let forms_evaled_vec: Vec<MalExpression> = iterate_rc_vec(match forms_evaled {
+        List(l) => l,
+        _ => panic!("EVAL List -> non-list"),
+    })
+    .collect();
+    match (forms_evaled_vec.get(0), forms_evaled_vec.get(1)) {
+        (Some(Atom(a)), Some(b)) => {
+            let atom_val = a.borrow().clone();
+            let mut args = vec![b.clone(), atom_val.clone()];
+
+            args.append(&mut (&forms_evaled_vec[2..]).to_vec());
+            let form_to_eval = List(Rc::new(args));
+            let replacement = EVAL(form_to_eval, env.clone());
+            a.replace(replacement.clone()?);
+            return replacement;
+        }
+        _ => return Err(format!("swap! -- bad arguments: {:?}", forms)),
     }
 }
 
