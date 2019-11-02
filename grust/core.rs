@@ -8,8 +8,8 @@ use crate::types::MalExpression::{
 use crate::types::MalRet;
 use itertools::Itertools;
 use std::cell::RefCell;
-use std::fs;
 use std::rc::Rc;
+use std::{fs, iter};
 
 impl MalExpression {
     fn is_nil(&self) -> bool {
@@ -243,6 +243,18 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn cons(args: Vec<MalExpression>) -> MalRet {
+        match (args.get(0), args.get(1)) {
+            (Some(a), Some(List(b))) | (Some(a), Some(Vector(b))) => {
+                let b_iter = b.iter();
+                let a_iter = iter::once(a);
+                let cons_vec = a_iter.chain(b_iter).map(|x| x.clone()).collect_vec();
+                Ok(List(Rc::new(cons_vec)))
+            }
+            _ => Err("cons requires two arguments: second must be a list or vector".to_string()),
+        }
+    }
+
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
         Ok(e) => e,
         Err(e) => panic!("Error setting up initial environment: {}", e),
@@ -271,6 +283,7 @@ pub fn core_ns() -> Env {
     env.set("atom?", RustFunction(atom_q));
     env.set("deref", RustFunction(deref));
     env.set("reset!", RustFunction(reset));
+    env.set("cons", RustFunction(cons));
 
     env
 }
