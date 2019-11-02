@@ -246,10 +246,7 @@ pub fn core_ns() -> Env {
     fn cons(args: Vec<MalExpression>) -> MalRet {
         match (args.get(0), args.get(1)) {
             (Some(a), Some(List(b))) | (Some(a), Some(Vector(b))) => {
-                let cons_vec = iter::once(a)
-                    .chain(b.iter())
-                    .map(|x| x.clone())
-                    .collect_vec();
+                let cons_vec = iter::once(a).chain(b.iter()).cloned().collect_vec();
                 Ok(List(Rc::new(cons_vec)))
             }
             _ => Err("cons requires two arguments: second must be a list or vector".to_string()),
@@ -265,7 +262,7 @@ pub fn core_ns() -> Env {
             })
             .collect();
         let flat: Vec<Vec<MalExpression>> = flat?;
-        let flat: Vec<MalExpression> = flat.iter().flatten().map(|x| x.clone()).collect();
+        let flat: Vec<MalExpression> = flat.iter().flatten().cloned().collect();
         Ok(List(Rc::new(flat)))
     }
 
