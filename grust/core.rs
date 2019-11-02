@@ -246,13 +246,27 @@ pub fn core_ns() -> Env {
     fn cons(args: Vec<MalExpression>) -> MalRet {
         match (args.get(0), args.get(1)) {
             (Some(a), Some(List(b))) | (Some(a), Some(Vector(b))) => {
-                let b_iter = b.iter();
-                let a_iter = iter::once(a);
-                let cons_vec = a_iter.chain(b_iter).map(|x| x.clone()).collect_vec();
+                let cons_vec = iter::once(a)
+                    .chain(b.iter())
+                    .map(|x| x.clone())
+                    .collect_vec();
                 Ok(List(Rc::new(cons_vec)))
             }
             _ => Err("cons requires two arguments: second must be a list or vector".to_string()),
         }
+    }
+
+    fn concat(args: Vec<MalExpression>) -> MalRet {
+        let flat: Result<Vec<_>, _> = args
+            .iter()
+            .map(|x: &MalExpression| match x.clone() {
+                List(l) | Vector(l) => Ok((*l).clone()),
+                _ => Err(format!("concat: {} not a list or vector", pr_str(x, true))),
+            })
+            .collect();
+        let flat: Vec<Vec<MalExpression>> = flat?;
+        let flat: Vec<MalExpression> = flat.iter().flatten().map(|x| x.clone()).collect();
+        Ok(List(Rc::new(flat)))
     }
 
     let env = match Env::new(None, Rc::new(vec![]), Rc::new(vec![])) {
@@ -284,6 +298,7 @@ pub fn core_ns() -> Env {
     env.set("deref", RustFunction(deref));
     env.set("reset!", RustFunction(reset));
     env.set("cons", RustFunction(cons));
+    env.set("concat", RustFunction(concat));
 
     env
 }
