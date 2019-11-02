@@ -50,6 +50,9 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     Symbol(ref sym) if sym == "if" => handle_if(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "swap!" => handle_swap(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "quote" => {
+                        handle_quote(rest_forms.to_vec(), loop_env)
+                    }
                     RustFunction(f) => {
                         if let List(rest_evaled) =
                             eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?
@@ -226,6 +229,13 @@ fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             "fn* expression must have at least two arguments; first must be list or vector"
                 .to_string(),
         ),
+    }
+}
+
+fn handle_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
+    match forms.get(0) {
+        Some(x) => Ok(x.clone()),
+        None => Err("quote requires an argument".to_string()),
     }
 }
 
