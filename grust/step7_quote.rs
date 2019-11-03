@@ -259,26 +259,8 @@ fn handle_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
 
 fn handle_quasiquote(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     let result = handle_quasiquote_inner(forms, env.clone());
-    Ok(Tco(Box::new(result?), env.clone()))
+    Ok(Tco(Box::new(result?), env))
 }
-
-/// [(1 (splice-unquote c) 3))] =>
-/// (cons [1] [((splice-unquote c) 3)]) =>
-/// (cons (quote 1) (concat c (cons (quote 3) ())))
-///
-/// [1] =>
-/// (quote 1)
-///
-/// [((splice-unquote c) 3)] =>
-/// (concat c [(3)]) =>
-/// (concat c (cons (quote 3) ()))
-///
-/// [(3)] =>
-/// (cons [3] ()) =>
-/// (cons (quote 3) ())
-///
-/// [3] =>
-/// (quote 3)
 
 fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     if let Some(x) = forms.get(0) {
@@ -298,7 +280,7 @@ fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                     let concat_1 = arg.clone();
                     let concat_2 = handle_quasiquote_inner(
                         vec![List(Rc::new(list_contents[1..].to_vec()))],
-                        env.clone(),
+                        env,
                     )?;
                     Ok(List(Rc::new(vec![concat, concat_1, concat_2])))
                 }
@@ -324,10 +306,8 @@ fn handle_quasiquote_inner_cons_case(
     env: Rc<Env>,
 ) -> MalRet {
     let quasi_first = handle_quasiquote_inner(vec![list_contents[0].clone()], env.clone())?;
-    let quasi_rest = handle_quasiquote_inner(
-        vec![List(Rc::new(list_contents[1..].to_vec()))],
-        env.clone(),
-    )?;
+    let quasi_rest =
+        handle_quasiquote_inner(vec![List(Rc::new(list_contents[1..].to_vec()))], env)?;
     Ok(List(Rc::new(vec![
         Symbol("cons".to_string()),
         quasi_first,
