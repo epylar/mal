@@ -3,7 +3,8 @@ use crate::printer::pr_str;
 use crate::reader::read_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Atom, Boolean, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
+    Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco,
+    Vector,
 };
 use crate::types::MalRet;
 use itertools::Itertools;
@@ -73,7 +74,11 @@ impl MalExpression {
                 Nil() => true,
                 _ => false,
             },
-            _ => false,
+            FnFunction { .. } => false,
+            Atom(_) => false,
+            Tco(_, _) => false,
+            RustFunction(_) => false,
+            RustClosure(_) => false,
         }
     }
 }
