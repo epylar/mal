@@ -56,17 +56,15 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
                 let loop_result: MalRet = match form0 {
-                    Symbol(ref sym) if sym == "def!" => handle_def(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "let*" => handle_let(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "do" => handle_do(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "if" => handle_if(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "fn*" => handle_fn(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "swap!" => handle_swap(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "quote" => {
-                        handle_quote(rest_forms.to_vec(), loop_env)
-                    }
+                    Symbol(ref sym) if sym == "def!" => eval_def(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "let*" => eval_let(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "do" => eval_do(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "if" => eval_if(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "fn*" => eval_fn(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "swap!" => eval_swap(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "quote" => eval_quote(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "quasiquote" => {
-                        handle_quasiquote(rest_forms.to_vec(), loop_env)
+                        eval_quasiquote(rest_forms.to_vec(), loop_env)
                     }
                     RustFunction(f) => {
                         if let List(rest_evaled) =
@@ -160,7 +158,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(List(f0)), Some(f1)) | (Some(Vector(f0)), Some(f1)) => {
             let let_env = Rc::new(Env::new(Some(env), Rc::new(vec![]), Rc::new(vec![]))?);
@@ -181,7 +179,7 @@ fn handle_let(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_do(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_do(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     if !forms.is_empty() {
         for x in forms[0..(forms.len() - 1)].iter() {
             let evaled = EVAL(x.clone(), env.clone());
@@ -196,7 +194,7 @@ fn handle_do(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(condition), Some(eval_if_true)) => {
             if EVAL(condition.clone(), env.clone())?.is_true_in_if() {
@@ -212,7 +210,7 @@ fn handle_if(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(Symbol(f0)), Some(f1)) => {
             let key = f0;
@@ -224,7 +222,7 @@ fn handle_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     let forms_evaled = eval_ast(&List(Rc::new(forms.clone())), env.clone())?;
     let forms_evaled_vec: Vec<MalExpression> = iterate_rc_vec(match forms_evaled {
         List(l) => l,
@@ -246,7 +244,7 @@ fn handle_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+fn eval_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(List(f0_v)), Some(f1)) | (Some(Vector(f0_v)), Some(f1)) => Ok(FnFunction {
             binds: f0_v.clone(),
@@ -260,23 +258,25 @@ fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn handle_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
+fn eval_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
     match forms.get(0) {
         Some(x) => Ok(x.clone()),
         None => Err("quote requires an argument".to_string()),
     }
 }
 
-fn handle_quasiquote(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
-    let result = handle_quasiquote_inner(forms, env.clone());
+fn eval_quasiquote(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    let result = eval_quasiquote_inner(forms, env.clone());
     Ok(Tco(Box::new(result?), env))
 }
 
-fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
-    if let Some(x) = forms.get(0) {
-        debug!("handle_quasiquote_inner: {}", pr_str(x, true));
-    } else {
-        debug!("handle_quasiquote_inner: <nothing>");
+fn eval_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    if log_enabled!(Level::Debug) {
+        if let Some(x) = forms.get(0) {
+            debug!("handle_quasiquote_inner: {}", pr_str(x, true));
+        } else {
+            debug!("handle_quasiquote_inner: <nothing>");
+        }
     }
     let result = match forms.get(0) {
         Some(List(list_contents)) if !list_contents.is_empty() => match &list_contents[0] {
@@ -288,7 +288,7 @@ fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                 (Some(Symbol(s)), Some(arg)) if s == "splice-unquote" => {
                     let concat = Symbol("concat".to_string());
                     let concat_1 = arg.clone();
-                    let concat_2 = handle_quasiquote_inner(
+                    let concat_2 = eval_quasiquote_inner(
                         vec![List(Rc::new(list_contents[1..].to_vec()))],
                         env,
                     )?;
@@ -297,9 +297,9 @@ fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                 (Some(Symbol(s)), None) if s == "splice-unquote" => {
                     Err("splice-unquote requires an argument".to_string())
                 }
-                _ => handle_quasiquote_inner_cons_case(list_contents, env),
+                _ => eval_quasiquote_inner_default_case_cons(list_contents, env),
             },
-            _ => handle_quasiquote_inner_cons_case(list_contents, env),
+            _ => eval_quasiquote_inner_default_case_cons(list_contents, env),
         },
         None => Ok(List(Rc::new(vec![]))),
         Some(x) => Ok(List(Rc::new(vec![Symbol("quote".to_string()), x.clone()]))),
@@ -311,13 +311,12 @@ fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     result
 }
 
-fn handle_quasiquote_inner_cons_case(
+fn eval_quasiquote_inner_default_case_cons(
     list_contents: &Rc<Vec<MalExpression>>,
     env: Rc<Env>,
 ) -> MalRet {
-    let quasi_first = handle_quasiquote_inner(vec![list_contents[0].clone()], env.clone())?;
-    let quasi_rest =
-        handle_quasiquote_inner(vec![List(Rc::new(list_contents[1..].to_vec()))], env)?;
+    let quasi_first = eval_quasiquote_inner(vec![list_contents[0].clone()], env.clone())?;
+    let quasi_rest = eval_quasiquote_inner(vec![List(Rc::new(list_contents[1..].to_vec()))], env)?;
     Ok(List(Rc::new(vec![
         Symbol("cons".to_string()),
         quasi_first,
