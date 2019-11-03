@@ -72,6 +72,9 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                     }
                 }
                 Symbol(_) | List(_) => match EVAL(form0, env.clone()) {
+                    Ok(List(x)) if x.is_empty() => {
+                        Err("Cannot apply empty list as function".to_string())
+                    }
                     Ok(form0_evaled) => {
                         let mut spliced_ast = vec![form0_evaled];
                         spliced_ast.append(&mut (&forms[1..]).to_vec());
