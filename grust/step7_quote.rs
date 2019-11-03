@@ -4,8 +4,13 @@ pub mod printer;
 pub mod reader;
 pub mod types;
 
+#[macro_use]
+extern crate log;
+
 use crate::env::Env;
 use crate::types::MalExpression::Atom;
+use log::debug;
+use log::Level;
 use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
@@ -21,21 +26,23 @@ use types::MalRet;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
-    //    println!("READ: {}", input);
+    debug!("READ: {}", input);
     read_str(input)
 }
 
 #[allow(non_snake_case)]
 fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
-    //    let ast_str = pr_str(&ast, true);
-    //    println!("EVAL: {}", ast_str);
+    if log_enabled!(Level::Debug) {
+        let ast_str = pr_str(&ast, true);
+        debug!("EVAL: {}", ast_str);
+    }
     let mut loop_env = env;
-    //    let mut loop_count = 0;
+    let mut loop_count = 0;
     'tco: loop {
-        //        if (loop_count > 0) {
-        //            println!("EVAL_loop {}: {}", loop_count, pr_str(&ast, true));
-        //        }
-        //        loop_count = loop_count + 1;
+        if loop_count > 0 && log_enabled!(Level::Debug) {
+            debug!("EVAL_loop {}: {}", loop_count, pr_str(&ast, true));
+        }
+        loop_count += 1;
         match ast.clone() {
             List(forms) => {
                 if forms.is_empty() {
@@ -243,8 +250,10 @@ fn handle_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
 }
 
 fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
-    //    let ast_str = pr_str(ast, true);
-    //    println!("eval_ast: {}", ast_str);
+    if log_enabled!(Level::Debug) {
+        let ast_str = pr_str(ast, true);
+        debug!("eval_ast: {}", ast_str);
+    }
     match ast.clone() {
         Symbol(ref symbol) => {
             let get = env.get(&symbol);
@@ -285,6 +294,8 @@ fn rep(line: &str, env: Rc<Env>) -> Result<String, String> {
 }
 
 fn main() {
+    env_logger::init();
+
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     let env = Rc::new(core::core_ns());

@@ -21,7 +21,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
             let middle: Vec<String> = l.iter().map(|x| pr_str(x, print_readably)).collect();
             format!("{}{}{}", "{", middle.join(" "), "}")
         }
-        RustFunction(_) => "#<Rust unction>".to_string(),
+        RustFunction(_) => "#<Rust function>".to_string(),
         FnFunction { binds, ast, .. } => format!(
             "#<fn* function: binds = {}; ast = {}>",
             pr_str(&Vector(binds.clone()), print_readably),
