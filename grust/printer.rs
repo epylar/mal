@@ -32,7 +32,7 @@ pub fn pr_str(expression: &MalExpression, print_readably: bool) -> String {
             true => "true".to_string(),
             false => "false".to_string(),
         },
-        Tco(x, _) => format!("#<TCO: ast = {}>", pr_str(x, print_readably)),
+        Tco(x, _) => format!("TCO({})>", pr_str(x, print_readably)),
         Nil() => "nil".to_string(),
         Atom(a) => format!("(atom {})", pr_str(&a.borrow(), print_readably)),
     }

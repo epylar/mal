@@ -44,6 +44,11 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         }
         loop_count += 1;
         match ast.clone() {
+            Tco(exp, env) => {
+                loop_env = env;
+                ast = *exp;
+                continue 'tco;
+            }
             List(forms) => {
                 if forms.is_empty() {
                     return Ok(ast);
@@ -59,6 +64,9 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     Symbol(ref sym) if sym == "swap!" => handle_swap(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "quote" => {
                         handle_quote(rest_forms.to_vec(), loop_env)
+                    }
+                    Symbol(ref sym) if sym == "quasiquote" => {
+                        handle_quasiquote(rest_forms.to_vec(), loop_env)
                     }
                     RustFunction(f) => {
                         if let List(rest_evaled) =
@@ -247,6 +255,84 @@ fn handle_quote(forms: Vec<MalExpression>, _env: Rc<Env>) -> MalRet {
         Some(x) => Ok(x.clone()),
         None => Err("quote requires an argument".to_string()),
     }
+}
+
+fn handle_quasiquote(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    let result = handle_quasiquote_inner(forms, env.clone());
+    Ok(Tco(Box::new(result?), env.clone()))
+}
+
+/// [(1 (splice-unquote c) 3))] =>
+/// (cons [1] [((splice-unquote c) 3)]) =>
+/// (cons (quote 1) (concat c (cons (quote 3) ())))
+///
+/// [1] =>
+/// (quote 1)
+///
+/// [((splice-unquote c) 3)] =>
+/// (concat c [(3)]) =>
+/// (concat c (cons (quote 3) ()))
+///
+/// [(3)] =>
+/// (cons [3] ()) =>
+/// (cons (quote 3) ())
+///
+/// [3] =>
+/// (quote 3)
+
+fn handle_quasiquote_inner(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    if let Some(x) = forms.get(0) {
+        debug!("handle_quasiquote_inner: {}", pr_str(x, true));
+    } else {
+        debug!("handle_quasiquote_inner: <nothing>");
+    }
+    let result = match forms.get(0) {
+        Some(List(list_contents)) if !list_contents.is_empty() => match &list_contents[0] {
+            Symbol(s) if s == "unquote" => match list_contents.get(1) {
+                Some(x) => Ok(Tco(Box::new(x.clone()), env)),
+                None => Err("unquote requires an argument".to_string()),
+            },
+            List(l) => match (l.get(0), l.get(1)) {
+                (Some(Symbol(s)), Some(arg)) if s == "splice-unquote" => {
+                    let concat = Symbol("concat".to_string());
+                    let concat_1 = arg.clone();
+                    let concat_2 = handle_quasiquote_inner(
+                        vec![List(Rc::new(list_contents[1..].to_vec()))],
+                        env.clone(),
+                    )?;
+                    Ok(List(Rc::new(vec![concat, concat_1, concat_2])))
+                }
+                (Some(Symbol(s)), None) if s == "splice-unquote" => {
+                    Err("splice-unquote requires an argument".to_string())
+                }
+                _ => handle_quasiquote_inner_cons_case(list_contents, env),
+            },
+            _ => handle_quasiquote_inner_cons_case(list_contents, env),
+        },
+        None => Ok(List(Rc::new(vec![]))),
+        Some(x) => Ok(List(Rc::new(vec![Symbol("quote".to_string()), x.clone()]))),
+    };
+    debug!(
+        "handle_quasiquote_inner result: {}",
+        pr_str(&(result.clone()?), true)
+    );
+    result
+}
+
+fn handle_quasiquote_inner_cons_case(
+    list_contents: &Rc<Vec<MalExpression>>,
+    env: Rc<Env>,
+) -> MalRet {
+    let quasi_first = handle_quasiquote_inner(vec![list_contents[0].clone()], env.clone())?;
+    let quasi_rest = handle_quasiquote_inner(
+        vec![List(Rc::new(list_contents[1..].to_vec()))],
+        env.clone(),
+    )?;
+    Ok(List(Rc::new(vec![
+        Symbol("cons".to_string()),
+        quasi_first,
+        quasi_rest,
+    ])))
 }
 
 fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
