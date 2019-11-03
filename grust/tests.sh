@@ -10,4 +10,5 @@ set -e
   make OPTIONAL=0 test^grust^step4
   make OPTIONAL=0 test^grust^step5
   make OPTIONAL=0 test^grust^step6
+  make OPTIONAL=0 test^grust^step7
 )
