@@ -20,7 +20,7 @@ use types::iterate_rc_vec;
 use types::Closure;
 use types::MalExpression;
 use types::MalExpression::{
-    FnFunction, HashTable, List, Nil, RustClosure, RustFunction, Symbol, Tco, Vector,
+    Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco, Vector,
 };
 use types::MalRet;
 
@@ -145,7 +145,17 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     x => return x,
                 }
             }
-            _ => return eval_ast(&ast, loop_env),
+            Symbol(_)
+            | Int(_)
+            | MalExpression::String(_)
+            | Vector(_)
+            | HashTable(_)
+            | Boolean(_)
+            | FnFunction { .. }
+            | Atom(_)
+            | RustFunction(_)
+            | RustClosure(_)
+            | Nil() => return eval_ast(&ast, loop_env),
         }
     }
 }
@@ -346,7 +356,15 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
             Ok(collected) => Ok(HashTable(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        _ => Ok(ast.clone()),
+        Tco(_, _) => panic!("Tco not expected in eval_ast"),
+        Int(_)
+        | MalExpression::String(_)
+        | Boolean(_)
+        | FnFunction { .. }
+        | Atom(_)
+        | RustFunction(_)
+        | RustClosure(_)
+        | Nil() => Ok(ast.clone()),
     }
 }
 
