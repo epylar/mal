@@ -53,6 +53,7 @@ MAL_IMPL = js
 basic_MODE = cbm
 # clj or cljs (Clojure vs ClojureScript/lumo)
 clojure_MODE = clj
+gclojure_MODE = clj
 # gdc, ldc2, or dmd
 d_MODE = gdc
 # python, js, cpp, or neko
@@ -89,7 +90,7 @@ DOCKERIZE =
 # Implementation specific settings
 #
 
-IMPLS = ada ada.2 awk bash basic bbc-basic c chuck clojure coffee common-lisp cpp crystal cs d dart \
+IMPLS = ada ada.2 awk bash basic bbc-basic c chuck clojure gclojure coffee common-lisp cpp crystal cs d dart \
 	elisp elixir elm erlang es6 factor fantom forth fsharp go groovy gnu-smalltalk \
 	guile haskell haxe hy io java js julia kotlin livescript logo lua make mal \
 	matlab miniMAL nasm nim objc objpascal ocaml perl perl6 php picolisp pike plpgsql \
@@ -168,6 +169,8 @@ basic_STEP_TO_PROG_qbasic = basic/$($(1))
 
 clojure_STEP_TO_PROG_clj  = clojure/target/$($(1)).jar
 clojure_STEP_TO_PROG_cljs = clojure/src/mal/$($(1)).cljc
+gclojure_STEP_TO_PROG_clj = gclojure/target/$($(1)).jar
+gclojure_STEP_TO_PROG_cljs = gclojure/src/mal/$($(1)).cljc
 
 haxe_STEP_TO_PROG_neko   = haxe/$($(1)).n
 haxe_STEP_TO_PROG_python = haxe/$($(1)).py
@@ -192,6 +195,7 @@ bbc-basic_STEP_TO_PROG = bbc-basic/$($(1)).bas
 c_STEP_TO_PROG =       c/$($(1))
 chuck_STEP_TO_PROG =   chuck/$($(1)).ck
 clojure_STEP_TO_PROG = $(clojure_STEP_TO_PROG_$(clojure_MODE))
+gclojure_STEP_TO_PROG = $(gclojure_STEP_TO_PROG_$(gclojure_MODE))
 coffee_STEP_TO_PROG =  coffee/$($(1)).coffee
 common-lisp_STEP_TO_PROG =  common-lisp/$($(1))
 cpp_STEP_TO_PROG =     cpp/$($(1))
