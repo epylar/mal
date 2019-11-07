@@ -1,7 +1,7 @@
 (ns mal.step1-read-print
   (:require [mal.readline :as readline]
             [mal.reader :as reader])
-  (:gen-class))
+  #?(:clj (:gen-class)))
 
 ;; read
 (defn READ [& [strng]]

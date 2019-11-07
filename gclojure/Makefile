@@ -1,12 +1,13 @@
-SOURCES_UTIL = src/mal/readline.clj
-SOURCES_BASE = $(SOURCES_UTIL) src/mal/reader.clj # src/mal/printer.clj
-SOURCES_LISP = # src/mal/env.clj src/mal/core.clj src/mal/stepA_mal.clj
-SRCS = $(SOURCES_BASE) # src/mal/env.clj src/mal/core.clj
+clojure_MODE ?= clj
+SOURCES_UTIL = src/mal/readline.$(clojure_MODE)
+SOURCES_BASE = $(SOURCES_UTIL) src/mal/reader.cljc src/mal/printer.cljc
+SOURCES_LISP = src/mal/env.cljc src/mal/core.cljc src/mal/stepA_mal.cljc
+SRCS = $(SOURCES_BASE) src/mal/env.cljc src/mal/core.cljc
 SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
-DEPS = deps
+DEPS = $(if $(filter cljs,$(clojure_MODE)),node_modules,deps)
 
-dist: mal.jar mal
+dist: $(if $(filter cljs,$(clojure_MODE)),node_modules,mal.jar mal)
 
 deps:
 	lein deps
@@ -20,8 +21,16 @@ mal: mal.jar
 	cat <(echo -e '#!/bin/sh\nexec java -jar "$$0" "$$@"') mal.jar > $@
 	chmod +x mal
 
-target/%.jar: src/mal/%.clj $(SRCS)
+src/mal/%.cljc: $(DEPS)
+	@true
+
+#src/mal/stepA_mal.cljc: $(DEPS)
+
+target/%.jar: src/mal/%.cljc $(SRCS)
 	lein with-profile $(word 1,$(subst _, ,$*)) uberjar
+
+node_modules:
+	npm install
 
 clean:
 	rm -rf target/ mal.jar mal
