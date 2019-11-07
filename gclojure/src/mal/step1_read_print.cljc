@@ -1,11 +1,12 @@
 (ns mal.step1-read-print
   (:require [mal.readline :as readline]
-            [mal.reader :as reader])
-  #?(:clj (:gen-class)))
+            [mal.reader :as reader]
+            [mal.printer :as printer])
+   (:gen-class))
 
 ;; read
 (defn READ [strng]
-  (reader/tokenize strng))
+  (reader/read-str strng))
 
 ;; eval
 (defn EVAL [ast env]
@@ -13,7 +14,7 @@
 
 ;; print
 (defn PRINT [exp]
-  exp)
+  (printer/mal-pr-str exp))
 
 ;; repl
 (defn rep [strng] (PRINT (EVAL (READ strng), {})))

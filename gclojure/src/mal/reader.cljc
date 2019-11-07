@@ -1,6 +1,5 @@
 (ns mal.reader)
 (use 'clojure.test)
-(require '[clojure.edn :as edn])
 
 (def token-regex #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}('\"`,;)]*)")
 
@@ -12,7 +11,7 @@
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
 (defn read-atom [token]
-  (edn/read-string token))
+  (Integer/parseInt token))
 (deftest read-atom-test
   (is (= 1 (read-atom "1"))))
 

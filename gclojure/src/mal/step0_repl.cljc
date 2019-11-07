@@ -1,6 +1,6 @@
 (ns mal.step0-repl
   (:require [mal.readline :as readline])
-  #?(:clj (:gen-class)))
+   (:gen-class))
 
 ;; read
 (defn READ [& [strng]]
