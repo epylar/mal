@@ -26,33 +26,36 @@
   (is (= 'symbol (read-atom "symbol")))
   (is (= "abc" (read-atom "\"abc\""))))
 
-(declare read-list)
+(declare read-sequence)
 
 (defn read-form [tokens]
   (let [first-token (first tokens)]
-    (if (= first-token "(") (read-list (rest tokens))
-                            {:value (read-atom (first tokens))
-                             :tokens (rest tokens)})))
+    (cond (= first-token "(") (read-sequence (rest tokens) ")")
+          (= first-token "[") (let [vec-seq (read-sequence (rest tokens) "]")]
+                                {:value (vec (:value vec-seq)) :tokens (:tokens vec-seq)})
+          :else {:value  (read-atom (first tokens))
+                 :tokens (rest tokens)})))
 (deftest read-form-test
   (is (= {:value 1 :tokens []} (read-form ["1"])))
-  (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"]))))
+  (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"])))
+  (is (= {:value [1 2 3] :tokens []} (read-form ["[" "1" "2" "3" "]"]))))
 
-(defn read-list [tokens]
+(defn read-sequence [tokens closing-token]
   (cond (= (count tokens) 0) {:value  '("unbalanced list error")
                               :tokens []}
-        (= (first tokens) ")") {:value  '()
+        (= (first tokens) closing-token) {:value  '()
                                 :tokens (drop 1 tokens)}
         :else (let [read-form-output (read-form tokens)
                     form-value (read-form-output :value)
                     rest-tokens (read-form-output :tokens)
-                    read-list-output (read-list rest-tokens)
+                    read-list-output (read-sequence rest-tokens closing-token)
                     rest-of-list (read-list-output :value)
                     rest-tokens (read-list-output :tokens)]
                 {:value  (cons form-value
                                rest-of-list)
                  :tokens rest-tokens})))
-(deftest read-list-test
-  (is (= {:value '(1 2 3) :tokens []} (read-list ["1" "2" "3" ")"]))))
+(deftest read-sequence-test
+  (is (= {:value '(1 2 3) :tokens []} (read-sequence ["1" "2" "3" ")"] ")"))))
 
 
 (defn read-str [strng]
