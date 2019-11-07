@@ -31,25 +31,25 @@
   (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"]))))
 
 (defn read-list [tokens]
-  (if (= (first tokens) ")")
-    {:value  '()
-     :tokens (drop 1 tokens)}
-    (let [read-form-output (read-form tokens)
-          form-value (read-form-output :value)
-          rest-tokens (read-form-output :tokens)
-          read-list-output (read-list rest-tokens)
-          rest-of-list (read-list-output :value)
-          rest-tokens (read-list-output :tokens)]
-      {:value  (cons form-value
-                     rest-of-list)
-       :tokens rest-tokens})))
+  (cond (= (count tokens) 0) {:value  '("unbalanced list error")
+                              :tokens []}
+        (= (first tokens) ")") {:value  '()
+                                :tokens (drop 1 tokens)}
+        :else (let [read-form-output (read-form tokens)
+                    form-value (read-form-output :value)
+                    rest-tokens (read-form-output :tokens)
+                    read-list-output (read-list rest-tokens)
+                    rest-of-list (read-list-output :value)
+                    rest-tokens (read-list-output :tokens)]
+                {:value  (cons form-value
+                               rest-of-list)
+                 :tokens rest-tokens})))
 (deftest read-list-test
   (is (= {:value '(1 2 3) :tokens []} (read-list ["1" "2" "3" ")"]))))
 
 
-
 (defn read-str [strng]
   (let [form (read-form (tokenize strng))]
-    (first form)))
+    (form :value)))
 (deftest read-str-test
   (is (= '(1 2 3)) (read-str "(1 2 3)")))
