@@ -28,16 +28,22 @@
 
 (declare read-sequence)
 
+(defn read-keyword [token]
+  (keyword (subs token 1)))
+
 (defn read-form [tokens]
-  (let [first-token (first tokens)]
+  (let [first-token (first tokens)
+        rest-tokens (vec (rest tokens))]
     (cond (= first-token "(") (read-sequence (rest tokens) ")")
           (= first-token "[") (let [vec-seq (read-sequence (rest tokens) "]")]
                                 {:value (vec (:value vec-seq)) :tokens (:tokens vec-seq)})
-          :else {:value  (read-atom (first tokens))
-                 :tokens (rest tokens)})))
+          (= (first (seq first-token)) \:) {:value (read-keyword first-token)  :tokens rest-tokens}
+          :else {:value  (read-atom  first-token )
+                 :tokens rest-tokens})))
 (deftest read-form-test
   (is (= {:value 1 :tokens []} (read-form ["1"])))
   (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"])))
+  (is (= {:value :foo :tokens []} (read-form [":foo"])))
   (is (= {:value [1 2 3] :tokens []} (read-form ["[" "1" "2" "3" "]"]))))
 
 (defn read-sequence [tokens closing-token]
