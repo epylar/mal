@@ -2,7 +2,8 @@
 (use 'clojure.test)
 
 (def token-regex #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}('\"`,;)]*)")
-(def integer-regex #"-?(0|[123456789][0123456789]*)")
+(def integer-regex #"^-?(0|[123456789][0123456789]*)$")
+(def string-regex #"^\".*\"$")
 
 (defn tokenize [input]
   (map
@@ -11,13 +12,19 @@
 (deftest tokenize-test
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
+(defn read-string-token [token]
+   (subs token 1 (- (count token) 1)))
+(deftest read-string-token-test
+  (is (= "abc" (read-string-token "\"abc\""))))
+
 (defn read-atom [token]
-  (if (re-matches integer-regex token)
-    (Integer/parseInt token)
-    (symbol token)))
+  (cond (re-matches integer-regex token) (Integer/parseInt token)
+        (re-matches string-regex token) (read-string-token token)
+        :else (symbol token)))
 (deftest read-atom-test
   (is (= 1 (read-atom "1")))
-  (is (= 'symbol (read-atom "symbol"))))
+  (is (= 'symbol (read-atom "symbol")))
+  (is (= "abc" (read-atom "\"abc\""))))
 
 (declare read-list)
 
