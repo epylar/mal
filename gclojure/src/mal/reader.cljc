@@ -14,10 +14,10 @@
 (defn read-atom [token]
   (if (re-matches integer-regex token)
     (Integer/parseInt token)
-    nil))
+    (symbol token)))
 (deftest read-atom-test
   (is (= 1 (read-atom "1")))
-  (is (= nil (read-atom "symbol"))))
+  (is (= 'symbol (read-atom "symbol"))))
 
 (declare read-list)
 
