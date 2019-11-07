@@ -1,13 +1,13 @@
-clojure_MODE ?= clj
+gclojure_MODE ?= clj
 SOURCES_UTIL = src/mal/readline.$(gclojure_MODE)
 SOURCES_BASE = $(SOURCES_UTIL) src/mal/reader.cljc src/mal/printer.cljc
 SOURCES_LISP = src/mal/env.cljc src/mal/core.cljc src/mal/stepA_mal.cljc
 SRCS = $(SOURCES_BASE) src/mal/env.cljc src/mal/core.cljc
 SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
-DEPS = $(if $(filter cljs,$(clojure_MODE)),node_modules,deps)
+DEPS = $(if $(filter cljs,$(gclojure_MODE)),node_modules,deps)
 
-dist: $(if $(filter cljs,$(clojure_MODE)),node_modules,mal.jar mal)
+dist: $(if $(filter cljs,$(gclojure_MODE)),node_modules,mal.jar mal)
 
 deps:
 	lein deps
