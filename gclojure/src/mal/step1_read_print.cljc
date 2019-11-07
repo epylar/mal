@@ -4,7 +4,7 @@
   #?(:clj (:gen-class)))
 
 ;; read
-(defn READ [& [strng]]
+(defn READ [strng]
   (reader/tokenize strng))
 
 ;; eval
