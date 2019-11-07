@@ -2,6 +2,7 @@
 (use 'clojure.test)
 
 (def token-regex #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}('\"`,;)]*)")
+(def integer-regex #"-?(0|[123456789][0123456789]*)")
 
 (defn tokenize [input]
   (map
@@ -11,33 +12,39 @@
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
 (defn read-atom [token]
-  (Integer/parseInt token))
+  (if (re-matches integer-regex token)
+    (Integer/parseInt token)
+    nil))
 (deftest read-atom-test
-  (is (= 1 (read-atom "1"))))
+  (is (= 1 (read-atom "1")))
+  (is (= nil (read-atom "symbol"))))
 
 (declare read-list)
 
 (defn read-form [tokens]
   (let [first-token (first tokens)]
     (if (= first-token "(") (read-list (rest tokens))
-                            (list (read-atom (first tokens)) (rest tokens)))))
+                            {:value (read-atom (first tokens))
+                             :tokens (rest tokens)})))
 (deftest read-form-test
-  (is (= '(1 [])) (read-form ["1"]))
-  (is (= '((1 2 3) []) (read-form ["(" "1" "2" "3" ")"]))))
+  (is (= {:value 1 :tokens []} (read-form ["1"])))
+  (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"]))))
 
 (defn read-list [tokens]
-  (let [next-symbol (first tokens)]
-    (if (= next-symbol ")")
-      (list '() (drop 1 tokens))
-      (let [read-form-output (read-form  tokens)
-            next-form (first read-form-output)
-            remaining-tokens-after-form (nth read-form-output 1)
-            read-list-output (read-list remaining-tokens-after-form)
-            rest-of-list (first read-list-output)
-            remaining-tokens-after-list (nth read-list-output 1)]
-        (list (cons next-form rest-of-list) remaining-tokens-after-list)))))
+  (if (= (first tokens) ")")
+    {:value  '()
+     :tokens (drop 1 tokens)}
+    (let [read-form-output (read-form tokens)
+          form-value (read-form-output :value)
+          rest-tokens (read-form-output :tokens)
+          read-list-output (read-list rest-tokens)
+          rest-of-list (read-list-output :value)
+          rest-tokens (read-list-output :tokens)]
+      {:value  (cons form-value
+                     rest-of-list)
+       :tokens rest-tokens})))
 (deftest read-list-test
-  (is (= '((1 2 3) [])) (read-list ["1" "2" "3" ")"])))
+  (is (= {:value '(1 2 3) :tokens []} (read-list ["1" "2" "3" ")"]))))
 
 
 
