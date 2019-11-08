@@ -2,7 +2,7 @@
   (:require [mal.readline :as readline]
             [mal.reader :as reader]
             [mal.printer :as printer])
-   (:gen-class))
+  (:gen-class))
 
 ;; read
 (defn READ [strng]

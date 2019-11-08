@@ -7,13 +7,13 @@
 
 (defn tokenize [input]
   (map
-    (fn [x] (nth x 1))
-    (re-seq token-regex input)))
+   (fn [x] (nth x 1))
+   (re-seq token-regex input)))
 (deftest tokenize-test
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
 (defn read-string-token [token]
-   (subs token 1 (- (count token) 1)))
+  (subs token 1 (- (count token) 1)))
 (deftest read-string-token-test
   (is (= "abc" (read-string-token "\"abc\""))))
 
@@ -38,7 +38,7 @@
           (= first-token "[") (let [vec-seq (read-sequence (rest tokens) "]")]
                                 {:value (vec (:value vec-seq)) :tokens (:tokens vec-seq)})
           (= (first (seq first-token)) \:) {:value (read-keyword first-token)  :tokens rest-tokens}
-          :else {:value  (read-atom  first-token )
+          :else {:value  (read-atom  first-token)
                  :tokens rest-tokens})))
 (deftest read-form-test
   (is (= {:value 1 :tokens []} (read-form ["1"])))
@@ -50,7 +50,7 @@
   (cond (= (count tokens) 0) {:value  '("unbalanced list error")
                               :tokens []}
         (= (first tokens) closing-token) {:value  '()
-                                :tokens (drop 1 tokens)}
+                                          :tokens (drop 1 tokens)}
         :else (let [read-form-output (read-form tokens)
                     form-value (read-form-output :value)
                     rest-tokens (read-form-output :tokens)
@@ -62,7 +62,6 @@
                  :tokens rest-tokens})))
 (deftest read-sequence-test
   (is (= {:value '(1 2 3) :tokens []} (read-sequence ["1" "2" "3" ")"] ")"))))
-
 
 (defn read-str [strng]
   (let [form (read-form (tokenize strng))]

@@ -1,7 +1,7 @@
 (ns mal.readline
-    (:require [clojure.string :refer [split]]
-              [clojure.java.io :refer [file]]
-              [net.n01se.clojure-jna :as jna]))
+  (:require [clojure.string :refer [split]]
+            [clojure.java.io :refer [file]]
+            [net.n01se.clojure-jna :as jna]))
 
 (defonce history-loaded (atom nil))
 (def HISTORY-FILE (str (System/getProperty "user.home") "/.mal-history"))
@@ -11,18 +11,17 @@
 ;;
 
 ;; editline (BSD)
-#_
-(do
-  (def readline-call (jna/to-fn String edit/readline))
-  (def add-history (jna/to-fn Void edit/add_history))
-  (def load-history #(doseq [line (split (slurp %) #"\n")]
-                       (jna/invoke Void edit/add_history line))))
+#_(do
+    (def readline-call (jna/to-fn String edit/readline))
+    (def add-history (jna/to-fn Void edit/add_history))
+    (def load-history #(doseq [line (split (slurp %) #"\n")]
+                         (jna/invoke Void edit/add_history line))))
 
 ;; GNU Readline (GPL)
 ;; WARNING: distributing your code with GNU readline enabled means you
 ;; must release your program as GPL
 ;#_
-(do 
+(do
   (def readline-call (jna/to-fn String readline/readline))
   (def add-history (jna/to-fn Void readline/add_history))
   (def load-history (jna/to-fn Integer readline/read_history)))

@@ -4,6 +4,8 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [net.n01se/clojure-jna "1.0.0"]]
 
+  :plugins [[lein-cljfmt "0.6.4"]]
+
   ;; To run a step with correct readline behavior:
   ;;   lein trampoline with-profile stepX run
   ;; To generate a executable uberjar (in target/) for a step:
