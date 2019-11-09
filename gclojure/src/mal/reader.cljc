@@ -59,7 +59,7 @@
                          {(get (vec k-v-pair) 0)
                           (get (vec k-v-pair) 1)})
                        k-v-pairs)]
-    (apply conj hash-list)))
+    (apply conj (cons {} hash-list))))
 
 (defn read-form [reader]
   (let [next-token (read-next reader)]
