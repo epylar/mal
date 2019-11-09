@@ -70,6 +70,7 @@
     (cond (= next-token "'") (list 'quote (read-form reader))
           (= next-token "`") (list 'quasiquote (read-form reader))
           (= next-token "~") (list 'unquote (read-form reader))
+          (= next-token "@") (list 'deref (read-form reader))
           (= next-token "~@") (list 'splice-unquote (read-form reader))
           (= next-token "(") (read-sequence reader ")")
           (= next-token "[") (vec (read-sequence reader "]"))
