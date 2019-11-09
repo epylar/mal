@@ -1,14 +1,15 @@
 (ns mal.reader)
 (use 'clojure.test)
+(use 'clojure.tools.trace)
 
 (def token-regex #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}('\"`,;)]*)")
 (def integer-regex #"^-?(0|[123456789][0123456789]*)$")
 (def string-regex #"^\".*\"$")
 
 (defn tokenize [input]
-  (map
-   (fn [x] (nth x 1))
-   (re-seq token-regex input)))
+  (vec (map
+         (fn [x] (nth x 1))
+         (re-seq token-regex input))))
 (deftest tokenize-test
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
@@ -16,16 +17,19 @@
   {:tokens  tokens :position (atom 0)})
 
 (defn peek-next [reader]
-  (if (< @(:position reader) (count (:tokens reader)))
-    (nth (:tokens reader) @(:position reader) )
-    nil))
+  (get (:tokens reader) @(:position reader)))
 
 (defn read-next [reader]
-  (let [next-val (peek-next reader)]
-    (if (not (= next-val nil))
-      (do (swap! (:position reader) (fn [x] (+ x 1)))
-          next-val)
-      nil)))
+  (get (:tokens reader) (dec (swap! (:position reader) (fn [x] (+ x 1))))))
+
+(deftest reader-test
+   (let [reader (reader [1 2 3])]
+     (is (= 1 (peek-next reader)))
+     (is (= 1 (read-next reader)))
+     (is (= 2 (read-next reader)))
+     (is (= 3 (read-next reader)))
+     (is (= nil (read-next reader)))))
+
 
 (defn read-string-token [token]
   (subs token 1 (- (count token) 1)))
@@ -33,7 +37,8 @@
   (is (= "abc" (read-string-token "\"abc\""))))
 
 (defn read-atom [token]
-  (cond (re-matches integer-regex token) (Integer/parseInt token)
+  (cond (nil? token) "ERROR: reading atom from nil"
+        (re-matches integer-regex token) (Integer/parseInt token)
         (re-matches string-regex token) (read-string-token token)
         :else (symbol token)))
 (deftest read-atom-test
@@ -48,7 +53,6 @@
 
 (defn read-form [reader]
   (let [first-token (read-next reader)]
-
     (cond (= first-token "(") (read-sequence reader ")")
           (= first-token "[") (vec (read-sequence reader "]"))
           (= (first (seq first-token)) \:) (read-keyword first-token)

@@ -2,7 +2,8 @@
   :description "Make-A-Lisp"
 
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [net.n01se/clojure-jna "1.0.0"]]
+                 [net.n01se/clojure-jna "1.0.0"]
+                 [org.clojure/tools.trace "0.7.10"]]
 
   :plugins [[lein-cljfmt "0.6.4"]]
 
