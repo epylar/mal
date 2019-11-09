@@ -51,10 +51,19 @@
 (defn read-keyword [token]
   (keyword (subs token 1)))
 
+(defn hash-from-sequence [sequence]
+  (let [k-v-pairs (partition 2 sequence)
+        hash-list (map (fn [k-v-pair]
+                         {(get (vec k-v-pair) 0)
+                          (get (vec k-v-pair) 1)})
+                       k-v-pairs)]
+    (apply conj hash-list)))
+
 (defn read-form [reader]
   (let [first-token (read-next reader)]
     (cond (= first-token "(") (read-sequence reader ")")
           (= first-token "[") (vec (read-sequence reader "]"))
+          (= first-token "{") (hash-from-sequence (read-sequence reader "}"))
           (= (first (seq first-token)) \:) (read-keyword first-token)
           :else   (read-atom  first-token))))
 
