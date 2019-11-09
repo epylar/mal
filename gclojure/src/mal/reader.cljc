@@ -12,6 +12,21 @@
 (deftest tokenize-test
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
+(defn reader [tokens]
+  {:tokens  tokens :position (atom 0)})
+
+(defn peek-next [reader]
+  (if (< @(:position reader) (count (:tokens reader)))
+    (nth (:tokens reader) @(:position reader) )
+    nil))
+
+(defn read-next [reader]
+  (let [next-val (peek-next reader)]
+    (if (not (= next-val nil))
+      (do (swap! (:position reader) (fn [x] (+ x 1)))
+          next-val)
+      nil)))
+
 (defn read-string-token [token]
   (subs token 1 (- (count token) 1)))
 (deftest read-string-token-test
@@ -31,40 +46,32 @@
 (defn read-keyword [token]
   (keyword (subs token 1)))
 
-(defn read-form [tokens]
-  (let [first-token (first tokens)
-        rest-tokens (vec (rest tokens))]
-    (cond (= first-token "(") (read-sequence (rest tokens) ")")
-          (= first-token "[") (let [vec-seq (read-sequence (rest tokens) "]")]
-                                {:value (vec (:value vec-seq)) :tokens (:tokens vec-seq)})
-          (= (first (seq first-token)) \:) {:value (read-keyword first-token)  :tokens rest-tokens}
-          :else {:value  (read-atom  first-token)
-                 :tokens rest-tokens})))
-(deftest read-form-test
-  (is (= {:value 1 :tokens []} (read-form ["1"])))
-  (is (= {:value '(1 2 3) :tokens []} (read-form ["(" "1" "2" "3" ")"])))
-  (is (= {:value :foo :tokens []} (read-form [":foo"])))
-  (is (= {:value [1 2 3] :tokens []} (read-form ["[" "1" "2" "3" "]"]))))
+(defn read-form [reader]
+  (let [first-token (read-next reader)]
 
-(defn read-sequence [tokens closing-token]
-  (cond (= (count tokens) 0) {:value  '("unbalanced list error")
-                              :tokens []}
-        (= (first tokens) closing-token) {:value  '()
-                                          :tokens (drop 1 tokens)}
-        :else (let [read-form-output (read-form tokens)
-                    form-value (read-form-output :value)
-                    rest-tokens (read-form-output :tokens)
-                    read-list-output (read-sequence rest-tokens closing-token)
-                    rest-of-list (read-list-output :value)
-                    rest-tokens (read-list-output :tokens)]
-                {:value  (cons form-value
-                               rest-of-list)
-                 :tokens rest-tokens})))
+    (cond (= first-token "(") (read-sequence reader ")")
+          (= first-token "[") (vec (read-sequence reader "]"))
+          (= (first (seq first-token)) \:) (read-keyword first-token)
+          :else   (read-atom  first-token))))
+
+(deftest read-form-test
+  (is (= 1 (read-form (reader ["1"]))))
+  (is (=  '(1 2 3) (read-form (reader ["(" "1" "2" "3" ")"]))))
+  (is (=   :foo (read-form (reader [":foo"]))))
+  (is (=  [1 2 3] (read-form (reader ["[" "1" "2" "3" "]"])))))
+
+(defn read-sequence [reader closing-token]
+  (cond (= (peek-next reader) nil)   '("unbalanced list error")
+        (= (peek-next reader) closing-token) '()
+        :else (let [
+                    form-value (read-form reader)
+                    rest-of-list (read-sequence reader closing-token)]
+        (cons form-value rest-of-list))))
+
 (deftest read-sequence-test
-  (is (= {:value '(1 2 3) :tokens []} (read-sequence ["1" "2" "3" ")"] ")"))))
+  (is (= '(1 2 3) (read-sequence (reader ["1" "2" "3" ")"]) ")"))))
 
 (defn read-str [strng]
-  (let [form (read-form (tokenize strng))]
-    (form :value)))
+  (read-form (reader (tokenize strng))))
 (deftest read-str-test
-  (is (= '(1 2 3)) (read-str "(1 2 3)")))
+  (is (= '(1 2 3) (read-str "(1 2 3)"))))
