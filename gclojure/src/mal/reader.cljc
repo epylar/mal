@@ -4,7 +4,8 @@
 
 (def token-regex #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}('\"`,;)]*)")
 (def integer-regex #"^-?(0|[123456789][0123456789]*)$")
-(def string-regex #"^\".*\"$")
+(def good-string-regex #"^\"(?:\\.|[^\\\"])*\"$")
+(def bad-string-regex #"^\"(?:\\.|[^\\\"])*$")
 
 (defn tokenize [input]
   (vec (map
@@ -39,7 +40,8 @@
 (defn read-atom [token]
   (cond (nil? token) "ERROR: reading atom from nil"
         (re-matches integer-regex token) (Integer/parseInt token)
-        (re-matches string-regex token) (read-string-token token)
+        (re-matches good-string-regex token) (read-string-token token)
+        (re-matches bad-string-regex token) "ERROR: unbalanced string"
         :else (symbol token)))
 (deftest read-atom-test
   (is (= 1 (read-atom "1")))
