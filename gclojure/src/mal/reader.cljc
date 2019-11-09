@@ -33,7 +33,11 @@
 
 
 (defn read-string-token [token]
-  (subs token 1 (- (count token) 1)))
+  (clojure.string/replace (clojure.string/replace (clojure.string/replace
+                                                    (subs token 1 (- (count token) 1))
+                                                    "\\\"" "\"")
+                                                  "\\n" "\n")
+                          "\\\\" "\\"))
 (deftest read-string-token-test
   (is (= "abc" (read-string-token "\"abc\""))))
 
