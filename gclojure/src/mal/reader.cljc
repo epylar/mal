@@ -62,18 +62,23 @@
     (apply conj hash-list)))
 
 (defn read-form [reader]
-  (let [first-token (read-next reader)]
-    (cond (= first-token "(") (read-sequence reader ")")
-          (= first-token "[") (vec (read-sequence reader "]"))
-          (= first-token "{") (hash-from-sequence (read-sequence reader "}"))
-          (= (first (seq first-token)) \:) (read-keyword first-token)
-          :else   (read-atom  first-token))))
+  (let [next-token (read-next reader)]
+    (cond (= next-token "'") (list 'quote (read-form reader))
+          (= next-token "`") (list 'quasiquote (read-form reader))
+          (= next-token "~") (list 'unquote (read-form reader))
+          (= next-token "~@") (list 'splice-unquote (read-form reader))
+          (= next-token "(") (read-sequence reader ")")
+          (= next-token "[") (vec (read-sequence reader "]"))
+          (= next-token "{") (hash-from-sequence (read-sequence reader "}"))
+          (= (first (seq next-token)) \:) (read-keyword next-token)
+          :else   (read-atom  next-token))))
 
 (deftest read-form-test
   (is (= 1 (read-form (reader ["1"]))))
   (is (=  '(1 2 3) (read-form (reader ["(" "1" "2" "3" ")"]))))
   (is (=   :foo (read-form (reader [":foo"]))))
-  (is (=  [1 2 3] (read-form (reader ["[" "1" "2" "3" "]"])))))
+  (is (=  [1 2 3] (read-form (reader ["[" "1" "2" "3" "]"]))))
+  (is (= '(quote 1) (read-form (reader ["'", "1", ""])))))
 
 (defn read-sequence [reader closing-token]
   (cond (= (peek-next reader) nil)   '("unbalanced list error")
