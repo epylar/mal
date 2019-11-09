@@ -66,7 +66,7 @@
 
 (defn read-sequence [reader closing-token]
   (cond (= (peek-next reader) nil)   '("unbalanced list error")
-        (= (peek-next reader) closing-token) '()
+        (= (peek-next reader) closing-token) (do (read-next reader) '())
         :else (let [
                     form-value (read-form reader)
                     rest-of-list (read-sequence reader closing-token)]
