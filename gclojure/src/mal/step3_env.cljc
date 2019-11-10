@@ -2,6 +2,7 @@
   (:require [mal.readline :as readline]
             [mal.reader :as reader]
             [mal.printer :as printer]
+            [mal.env :as mal-env]
             [clojure.repl])
   (:gen-class))
 
@@ -21,7 +22,7 @@
         :else (eval-ast ast env)))
 
 (defn eval-symbol [symbol env]
-  (let [lookup (get env symbol)]
+  (let [lookup (mal-env/env-get env symbol)]
     (if (= lookup nil) (throw (Error. (str symbol " not found"))))
                        lookup))
 
@@ -39,18 +40,19 @@
 ;; repl
 (defn rep [strng env] (PRINT (EVAL (READ strng) env)))
 ;; repl loop
-(defn repl-loop []
-  (let [line (readline/readline "user> ")
-        env {'+ +
-             '- -
-             '/ /
-             '* *}]
+(defn repl-loop [env]
+  (let [line (readline/readline "user> ")]
     (when line
       (when-not (re-seq #"^\s*$|^\s*;.*$" line) ; blank/comment
         (try
           (println (rep line env))
           (catch Throwable e (clojure.repl/pst e))))
-     (recur))))
+     (recur env))))
 
 (defn -main [& args]
-  (repl-loop))
+  (let [env (mal-env/env-new nil)]
+    (mal-env/env-set env '+ +)
+    (mal-env/env-set env '- -)
+    (mal-env/env-set env '* *)
+    (mal-env/env-set env '/ /)
+    (repl-loop env)))
