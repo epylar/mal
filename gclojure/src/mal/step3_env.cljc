@@ -39,9 +39,7 @@
         :else (eval-ast ast env)))
 
 (defn eval-symbol [symbol env]
-  (let [lookup (mal-env/env-get env symbol)]
-    (if (= lookup nil) (throw (Error. (str symbol " not found"))))
-    lookup))
+   (mal-env/env-get env symbol))
 
 (defn eval-ast [ast env]
   (cond (symbol? ast) (eval-symbol ast env)

@@ -12,5 +12,5 @@
                                :else (env-find (:outer env) key)))
 
 (defn env-get [env key] (let [found-env (env-find env key)]
-                          (if (nil? found-env) nil
+                          (if (nil? found-env) (throw (Error. (str key " not found")))
                               (get @(:data found-env) key))))
