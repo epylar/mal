@@ -1,7 +1,8 @@
 (ns mal.step2-eval
   (:require [mal.readline :as readline]
             [mal.reader :as reader]
-            [mal.printer :as printer])
+            [mal.printer :as printer]
+            [clojure.repl])
   (:gen-class))
 
 (use 'clojure.tools.trace)
@@ -46,8 +47,8 @@
       (when-not (re-seq #"^\s*$|^\s*;.*$" line) ; blank/comment
         (try
           (println (rep line env))
-           (catch Throwable e (clojure.repl/pst e)))))
-      (recur)))
+          (catch Throwable e (clojure.repl/pst e))))
+     (recur))))
 
 (defn -main [& args]
   (repl-loop))
