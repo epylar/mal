@@ -14,11 +14,28 @@
 
 ;; eval
 (declare eval-ast)
+(declare EVAL)
+
+(defn eval-def! [args env]
+  (if (< 2 (count args)) (throw (Error. (str "def! requires 2 arguments")))
+                         (do (mal-env/env-set env (first args) (EVAL (second args) env))
+                             (mal-env/env-get env (first args)))))
+
+(defn eval-let* [args env]
+  (if (< 2 (count args)) (throw (Error. (str "let* requires 2 arguments")))
+                         (let [new-env (mal-env/env-new env)]
+                           (doall (map (fn [key-value] key-value (mal-env/env-set
+                                                                   new-env (first key-value)
+                                                                   (EVAL (second key-value) new-env)))
+                                       (partition 2 (first args))))
+                           (EVAL (second args) new-env))))
 
 (defn EVAL [ast env]
   (cond (and (list? ast) (empty? ast)) ast
-        (list? ast) (let [ast-evaled (eval-ast ast env)]
-          (apply (first ast-evaled) (rest ast-evaled)))
+        (list? ast) (cond (= (first ast) 'def!) (eval-def! (rest ast) env)
+                          (= (first ast) 'let*) (eval-let* (rest ast) env)
+                          :else (let [ast-evaled (eval-ast ast env)]
+                                  (apply (first ast-evaled) (rest ast-evaled))))
         :else (eval-ast ast env)))
 
 (defn eval-symbol [symbol env]
