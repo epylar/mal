@@ -72,7 +72,7 @@
           (= next-token "~") (list 'unquote (read-form reader))
           (= next-token "@") (list 'deref (read-form reader))
           (= next-token "~@") (list 'splice-unquote (read-form reader))
-          (= next-token "(") (read-sequence reader ")")
+          (= next-token "(") (apply list (read-sequence reader ")"))
           (= next-token "[") (vec (read-sequence reader "]"))
           (= next-token "{") (hash-from-sequence (read-sequence reader "}"))
           (= (first (seq next-token)) \:) (read-keyword next-token)
