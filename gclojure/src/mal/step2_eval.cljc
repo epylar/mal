@@ -28,6 +28,8 @@
 (defn eval-ast [ast env]
   (cond (symbol? ast) (eval-symbol ast env)
         (list? ast) (map (fn [x] (EVAL x env)) ast)
+        (vector? ast) (vec (map (fn [x] (EVAL x env)) ast))
+        (map? ast) (reduce conj (map (fn [key] {key (EVAL (get ast key) env)}) (keys ast)))
         :else ast))
 
 ;; print
