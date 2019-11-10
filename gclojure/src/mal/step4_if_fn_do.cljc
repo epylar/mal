@@ -1,4 +1,4 @@
-(ns mal.step3-env
+(ns mal.step4-if-fn-do
   (:require [mal.readline :as readline]
             [mal.reader :as reader]
             [mal.printer :as printer]
