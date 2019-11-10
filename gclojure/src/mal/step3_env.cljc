@@ -18,17 +18,17 @@
 
 (defn eval-def! [args env]
   (if (< 2 (count args)) (throw (Error. (str "def! requires 2 arguments")))
-                         (do (mal-env/env-set env (first args) (EVAL (second args) env))
-                             (mal-env/env-get env (first args)))))
+      (do (mal-env/env-set env (first args) (EVAL (second args) env))
+          (mal-env/env-get env (first args)))))
 
 (defn eval-let* [args env]
   (if (< 2 (count args)) (throw (Error. (str "let* requires 2 arguments")))
-                         (let [new-env (mal-env/env-new env)]
-                           (doall (map (fn [key-value] key-value (mal-env/env-set
-                                                                   new-env (first key-value)
-                                                                   (EVAL (second key-value) new-env)))
-                                       (partition 2 (first args))))
-                           (EVAL (second args) new-env))))
+      (let [new-env (mal-env/env-new env)]
+        (doall (map (fn [key-value] key-value (mal-env/env-set
+                                               new-env (first key-value)
+                                               (EVAL (second key-value) new-env)))
+                    (partition 2 (first args))))
+        (EVAL (second args) new-env))))
 
 (defn EVAL [ast env]
   (cond (and (list? ast) (empty? ast)) ast
@@ -41,7 +41,7 @@
 (defn eval-symbol [symbol env]
   (let [lookup (mal-env/env-get env symbol)]
     (if (= lookup nil) (throw (Error. (str symbol " not found"))))
-                       lookup))
+    lookup))
 
 (defn eval-ast [ast env]
   (cond (symbol? ast) (eval-symbol ast env)
@@ -60,11 +60,11 @@
 (defn repl-loop [env]
   (let [line (readline/readline "user> ")]
     (when line
-      (when-not (re-seq #"^\s*$|^\s*;.*$" line) ; blank/comment
+      (when-not (re-seq #"^\s*$|^\s*;.*$" line)             ; blank/comment
         (try
           (println (rep line env))
           (catch Throwable e (clojure.repl/pst e))))
-     (recur env))))
+      (recur env))))
 
 (defn -main [& args]
   (let [env (mal-env/env-new nil)]

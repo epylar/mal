@@ -9,8 +9,8 @@
 
 (defn tokenize [input]
   (vec (map
-         (fn [x] (nth x 1))
-         (re-seq token-regex input))))
+        (fn [x] (nth x 1))
+        (re-seq token-regex input))))
 (deftest tokenize-test
   (is (= '("(" "abc" ")" "") (tokenize "(abc)"))))
 
@@ -24,18 +24,17 @@
   (get (:tokens reader) (dec (swap! (:position reader) (fn [x] (+ x 1))))))
 
 (deftest reader-test
-   (let [reader (reader [1 2 3])]
-     (is (= 1 (peek-next reader)))
-     (is (= 1 (read-next reader)))
-     (is (= 2 (read-next reader)))
-     (is (= 3 (read-next reader)))
-     (is (= nil (read-next reader)))))
-
+  (let [reader (reader [1 2 3])]
+    (is (= 1 (peek-next reader)))
+    (is (= 1 (read-next reader)))
+    (is (= 2 (read-next reader)))
+    (is (= 3 (read-next reader)))
+    (is (= nil (read-next reader)))))
 
 (defn read-string-token [token]
   (clojure.string/replace (clojure.string/replace (clojure.string/replace
-                                                    (subs token 1 (- (count token) 1))
-                                                    "\\\"" "\"")
+                                                   (subs token 1 (- (count token) 1))
+                                                   "\\\"" "\"")
                                                   "\\n" "\n")
                           "\\\\" "\\"))
 (deftest read-string-token-test
@@ -88,10 +87,9 @@
 (defn read-sequence [reader closing-token]
   (cond (= (peek-next reader) nil)   '("unbalanced list error")
         (= (peek-next reader) closing-token) (do (read-next reader) '())
-        :else (let [
-                    form-value (read-form reader)
+        :else (let [form-value (read-form reader)
                     rest-of-list (read-sequence reader closing-token)]
-        (cons form-value rest-of-list))))
+                (cons form-value rest-of-list))))
 
 (deftest read-sequence-test
   (is (= '(1 2 3) (read-sequence (reader ["1" "2" "3" ")"]) ")"))))

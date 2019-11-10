@@ -2,10 +2,10 @@
 (use 'clojure.test)
 (use 'clojure.tools.trace)
 
-(defn env-new [env] { :outer env :data (atom {})})
+(defn env-new [env] {:outer env :data (atom {})})
 
 (defn env-set [env key val]
-                                (swap! (:data env) (fn [old] (assoc old key val))))
+  (swap! (:data env) (fn [old] (assoc old key val))))
 
 (defn env-find [env key] (cond (nil? env) nil
                                (contains? @(:data env) key) env
@@ -13,4 +13,4 @@
 
 (defn env-get [env key] (let [found-env (env-find env key)]
                           (if (nil? found-env) nil
-                                               (get @(:data found-env) key))))
+                              (get @(:data found-env) key))))

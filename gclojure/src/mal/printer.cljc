@@ -7,10 +7,10 @@
 (defn pr-map [the-map]
   (str "{"
        (clojure.string/join " " (map
-              (fn [map-key] (str  (mal-pr-str map-key)
-                                 " "
-                                  (mal-pr-str (get the-map map-key))))
-              (keys the-map)))
+                                 (fn [map-key] (str  (mal-pr-str map-key)
+                                                     " "
+                                                     (mal-pr-str (get the-map map-key))))
+                                 (keys the-map)))
        "}"))
 
 (defn pr-list [the-list]

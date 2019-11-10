@@ -17,13 +17,13 @@
 (defn EVAL [ast env]
   (cond (and (list? ast) (empty? ast)) ast
         (list? ast) (let [ast-evaled (eval-ast ast env)]
-          (apply (first ast-evaled) (rest ast-evaled)))
+                      (apply (first ast-evaled) (rest ast-evaled)))
         :else (eval-ast ast env)))
 
 (defn eval-symbol [symbol env]
   (let [lookup (get env symbol)]
     (if (= lookup nil) (throw (Error. (str symbol " not found"))))
-                       lookup))
+    lookup))
 
 (defn eval-ast [ast env]
   (cond (symbol? ast) (eval-symbol ast env)
@@ -50,7 +50,7 @@
         (try
           (println (rep line env))
           (catch Throwable e (clojure.repl/pst e))))
-     (recur))))
+      (recur))))
 
 (defn -main [& args]
   (repl-loop))
