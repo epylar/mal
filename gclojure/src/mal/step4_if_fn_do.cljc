@@ -30,10 +30,18 @@
                     (partition 2 (first args))))
         (EVAL (second args) new-env))))
 
+(defn eval-if [args env]
+  (if (EVAL (first args) env)
+    (EVAL (second args) env)
+    (if (> (count args) 2)
+      (EVAL (nth args 2) env)
+      nil)))
+
 (defn EVAL [ast env]
   (cond (and (list? ast) (empty? ast)) ast
         (list? ast) (cond (= (first ast) 'def!) (eval-def! (rest ast) env)
                           (= (first ast) 'let*) (eval-let* (rest ast) env)
+                          (= (first ast) 'if) (eval-if (rest ast) env)
                           :else (let [ast-evaled (eval-ast ast env)]
                                   (apply (first ast-evaled) (rest ast-evaled))))
         :else (eval-ast ast env)))

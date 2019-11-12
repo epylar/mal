@@ -45,6 +45,9 @@
         (re-matches integer-regex token) (Integer/parseInt token)
         (re-matches good-string-regex token) (read-string-token token)
         (re-matches bad-string-regex token) "ERROR: unbalanced string"
+        (= "true" token) true
+        (= "false" token) false
+        (= "nil" token) nil
         :else (symbol token)))
 (deftest read-atom-test
   (is (= 1 (read-atom "1")))
