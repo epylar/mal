@@ -44,7 +44,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
         }
         loop_count += 1;
 
-        ast = macroexpand_once(&ast, loop_env.clone())?;
+        ast = macroexpand(&ast, loop_env.clone())?;
 
         match ast.clone() {
             Tco(exp, env) => {
@@ -69,6 +69,13 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     Symbol(ref sym) if sym == "quote" => eval_quote(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "quasiquote" => {
                         eval_quasiquote(rest_forms.to_vec(), loop_env)
+                    },
+                    Symbol(ref sym) if sym == "macroexpand" => {
+                        if !rest_forms.is_empty() {
+                            macroexpand(&rest_forms[0], loop_env)
+                        } else {
+                            Err("macroexpand requires an argument".to_string())
+                        }
                     }
                     RustFunction(f) => {
                         if let List(rest_evaled) =
@@ -222,7 +229,7 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
 }
 
 
-fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Result<MalExpression, String> {
+fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<Result<MalExpression, String>> {
     debug!("macroexpand_once: {}", printer::pr_str(&ast, true));
     match ast {
         List(l) => {
@@ -232,17 +239,41 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Result<MalExpression, 
                     match target {
                         Some(inner_ast) => match inner_ast {
                             FnFunction { binds, ast: fn_ast, outer_env, is_macro: true, .. } => {
-                                Ok(Tco(Box::new(EVAL(apply_fnfunction(binds, fn_ast, outer_env, l[1..].to_vec(), env.clone())?, env.clone())?), env.clone()))
+                                match apply_fnfunction(binds, fn_ast, outer_env, l[1..].to_vec(), env.clone()) {
+                                    Ok(a) => match EVAL(a, env.clone()) {
+                                        Ok(x) => {
+                                            Some(Ok(x))
+                                        },
+                                        y => {
+                                            Some(y)
+                                        }
+                                    },
+                                    z => Some(z)
+                                }
                             },
-                            _ => Ok(ast.clone())
+                            _ => None
                         }
-                        _ => Ok(ast.clone())
+                        _ => None
                     }
                 },
-                _ => Ok(ast.clone())
+                _ => None
             }
         },
-        _ => Ok(ast.clone())
+        _ => None
+    }
+}
+
+fn macroexpand(ast: &MalExpression, env: Rc<Env>) -> Result<MalExpression, String> {
+    let mut ast = ast.clone();
+    loop {
+        match macroexpand_once(&ast, env.clone()) {
+            Some(Ok(x)) => {
+                ast = x;
+                continue
+            },
+            Some(y) => return y,
+            None => return Ok(ast)
+        }
     }
 }
 
