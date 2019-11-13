@@ -8,7 +8,7 @@ mal: step6_file
 	cp $< $@
 
 %: %.rs
-	RUSTC_WRAPPER=sccache cargo build --bin $*
+	cargo build --bin $*
 	# cargo build --release --bin $*
 	cp target/debug/$* $@
 	# cp target/release/$* $@
