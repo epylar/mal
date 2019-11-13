@@ -48,6 +48,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                     binds,
                     ast,
                     outer_env,
+                    is_macro: _
                 } => {
                     let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
                     match rest_evaled {
@@ -158,6 +159,7 @@ fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             binds: f0_v.clone(),
             ast: Rc::new(f1.clone()),
             outer_env: env,
+            is_macro: false
         }),
         _ => Err(
             "fn* expression must have at least two arguments; first must be list or vector"

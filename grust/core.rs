@@ -32,6 +32,15 @@ impl MalExpression {
         !(self.is_nil() || self.is_false())
     }
 
+    pub fn first(&self) -> Option<&MalExpression> {
+        match self {
+            List(l) => {
+                l.get(0)
+            },
+            _ => None
+        }
+    }
+
     fn equals(&self, other: &MalExpression) -> bool {
         fn compare_vecs(a: &Rc<Vec<MalExpression>>, b: &Rc<Vec<MalExpression>>) -> bool {
             if a.len() != b.len() {
@@ -81,6 +90,13 @@ impl MalExpression {
             RustClosure(_) => false,
         }
     }
+
+//    fn is_macro(&self) -> bool {
+//        match self {
+//            FnFunction { is_macro: true, .. } => true,
+//            _ => false
+//        }
+//    }
 }
 
 pub fn core_ns() -> Env {

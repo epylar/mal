@@ -16,6 +16,7 @@ pub enum MalExpression {
         binds: Rc<Vec<MalExpression>>,
         ast: Rc<MalExpression>,
         outer_env: Rc<Env>,
+        is_macro: bool
     },
     Atom(Rc<RefCell<MalExpression>>),
     Tco(Box<MalExpression>, Rc<Env>), // for tail call optimization; loop again in EVAL

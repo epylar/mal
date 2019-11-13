@@ -43,6 +43,9 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
             debug!("EVAL_loop {}: {}", loop_count, pr_str(&ast, true));
         }
         loop_count += 1;
+
+        ast = macroexpand_once(&ast, loop_env.clone())?;
+
         match ast.clone() {
             Tco(exp, env) => {
                 loop_env = env;
@@ -51,12 +54,13 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
             }
             List(forms) => {
                 if forms.is_empty() {
-                    return Ok(ast);
+                    return Ok(ast)
                 }
                 let form0 = forms[0].clone();
                 let rest_forms: Vec<MalExpression> = forms[1..].to_vec().clone();
                 let loop_result: MalRet = match form0 {
                     Symbol(ref sym) if sym == "def!" => eval_def(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "defmacro!" => eval_defmacro(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "let*" => eval_let(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "do" => eval_do(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "if" => eval_if(rest_forms.to_vec(), loop_env),
@@ -89,31 +93,9 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         binds,
                         ast: fn_ast,
                         outer_env,
+                        is_macro: false
                     } => {
-                        let f_args = eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?;
-                        match f_args {
-                            List(f_args_vec) => {
-                                let binds_vec_string: Vec<String> = binds
-                                    .iter()
-                                    .map(|x| match x {
-                                        MalExpression::Symbol(x_symbol) => x_symbol.clone(),
-                                        _ => panic!(
-                                            "non-symbol {} in FnFunction binds",
-                                            pr_str(x, true)
-                                        ),
-                                    })
-                                    .collect();
-                                let fn_env = Env::new(
-                                    Some(outer_env.clone()),
-                                    Rc::new(binds_vec_string),
-                                    f_args_vec,
-                                )?;
-                                ast = (*fn_ast).clone();
-                                loop_env = Rc::new(fn_env);
-                                continue 'tco;
-                            }
-                            _ => panic!("eval_ast(List) => non-List"),
-                        }
+                        apply_fnfunction(binds, fn_ast, outer_env, rest_forms, loop_env)
                     }
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
                         Ok(List(ref x)) if x.is_empty() => {
@@ -222,6 +204,48 @@ fn eval_def(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
+fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(Symbol(f0)), Some(f1)) => {
+            let key = f0;
+            let value = EVAL(f1.clone(), env.clone())?;
+            if let FnFunction { binds, ast, outer_env, is_macro: _ } = value {
+                let macro_fn = FnFunction { binds, ast, outer_env, is_macro: true };
+                env.set(key, macro_fn.clone());
+                Ok(macro_fn)
+            } else {
+                Err("defmacro! requires second argument to evaluate to a function".to_string())
+            }
+        }
+        _ => Err("defmacro! requires 2 arguments; first argument should be a symbol".to_string()),
+    }
+}
+
+
+fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Result<MalExpression, String> {
+    debug!("macroexpand_once: {}", printer::pr_str(&ast, true));
+    match ast {
+        List(l) => {
+            match l.get(0) {
+                Some(Symbol(s)) => {
+                    let target = env.get(s);
+                    match target {
+                        Some(inner_ast) => match inner_ast {
+                            FnFunction { binds, ast: fn_ast, outer_env, is_macro: true, .. } => {
+                                Ok(Tco(Box::new(EVAL(apply_fnfunction(binds, fn_ast, outer_env, l[1..].to_vec(), env.clone())?, env.clone())?), env.clone()))
+                            },
+                            _ => Ok(ast.clone())
+                        }
+                        _ => Ok(ast.clone())
+                    }
+                },
+                _ => Ok(ast.clone())
+            }
+        },
+        _ => Ok(ast.clone())
+    }
+}
+
 fn eval_swap(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     let forms_evaled = eval_ast(&List(Rc::new(forms.clone())), env.clone())?;
     let forms_evaled_vec: Vec<MalExpression> = iterate_rc_vec(match forms_evaled {
@@ -250,6 +274,7 @@ fn eval_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             binds: f0_v.clone(),
             ast: Rc::new(f1.clone()),
             outer_env: env,
+            is_macro: false
         }),
         _ => Err(
             "fn* expression must have at least two arguments; first must be list or vector"
@@ -322,6 +347,35 @@ fn eval_quasiquote_inner_default_case_cons(
         quasi_first,
         quasi_rest,
     ])))
+}
+
+fn apply_fnfunction(binds: Rc<Vec<MalExpression>>,
+                    fn_ast: Rc<MalExpression>,
+                    outer_env: Rc<Env>,
+                    rest_forms: Vec<MalExpression>,
+                    current_env: Rc<Env>) -> Result<MalExpression, String> {
+    let f_args = eval_ast(&List(Rc::new(rest_forms.to_vec())), current_env)?;
+    match f_args {
+        List(f_args_vec) => {
+            let binds_vec_string: Vec<String> = binds
+                .iter()
+                .map(|x| match x {
+                    MalExpression::Symbol(x_symbol) => x_symbol.clone(),
+                    _ => panic!(
+                        "non-symbol {} in FnFunction binds",
+                        pr_str(x, true)
+                    ),
+                })
+                .collect();
+            let fn_env = Env::new(
+                Some(outer_env.clone()),
+                Rc::new(binds_vec_string),
+                f_args_vec,
+            )?;
+            Ok(Tco(Box::new((*fn_ast).clone()), Rc::new(fn_env)))
+        }
+        _ => panic!("eval_ast(List) => non-List"),
+    }
 }
 
 fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
