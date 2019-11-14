@@ -11,6 +11,8 @@ use itertools::Itertools;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::{fs, iter};
+use crate::types;
+use std::convert::TryInto;
 
 impl MalExpression {
     fn is_nil(&self) -> bool {
@@ -90,13 +92,6 @@ impl MalExpression {
             RustClosure(_) => false,
         }
     }
-
-//    fn is_macro(&self) -> bool {
-//        match self {
-//            FnFunction { is_macro: true, .. } => true,
-//            _ => false
-//        }
-//    }
 }
 
 pub fn core_ns() -> Env {
@@ -292,6 +287,47 @@ pub fn core_ns() -> Env {
         Err(e) => panic!("Error setting up initial environment: {}", e),
     };
 
+    fn nth(args: Vec<MalExpression>) -> MalRet {
+        match (args.get(0), args.get(1)) {
+            (Some(List(l)), Some(Int(i))) | (Some(Vector(l)), Some(Int(i))) => {
+                let index: usize = (*i).try_into().unwrap();
+                if index < l.len() {
+                    Ok(types::iterate_rc_vec(l.clone()).nth(index).unwrap())
+                } else {
+                    Err("nth called with out of range index".to_string())
+                }
+            }
+            _ => Err("nth requires two arguments: list/vector and integer index into list/vector".to_string()),
+        }
+    }
+
+    fn first(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(List(l)) | Some(Vector(l)) => {
+                match l.get(0) {
+                    Some(x) => Ok(x.clone()),
+                    None => Ok(Nil())
+                }
+            },
+            Some(Nil()) => Ok(Nil()),
+            _ => Err("first requires an argument".to_string()),
+        }
+    }
+
+    fn rest(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(List(l)) | Some(Vector(l)) => {
+                if !l.is_empty() {
+                    Ok(List(Rc::new(l[1..].to_vec())))
+                } else {
+                    Ok(List(Rc::new(vec!())))
+                }
+            },
+            Some(x) => Err("invalid argument to rest: must be a non-empty list/vector".to_string()),
+            _ => Err("rest requires an argument".to_string()),
+        }
+    }
+
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
     env.set("*", RustFunction(times));
@@ -317,6 +353,9 @@ pub fn core_ns() -> Env {
     env.set("reset!", RustFunction(reset));
     env.set("cons", RustFunction(cons));
     env.set("concat", RustFunction(concat));
+    env.set("nth", RustFunction(nth));
+    env.set("first", RustFunction(first));
+    env.set("rest", RustFunction(rest));
 
     env
 }
