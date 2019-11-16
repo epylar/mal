@@ -72,6 +72,8 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     Symbol(ref sym) if sym == "quasiquote" => {
                         eval_quasiquote(rest_forms.to_vec(), loop_env)
                     }
+                    Symbol(ref sym) if sym == "try*" => eval_try(rest_forms.to_vec(), loop_env),
+                    Symbol(ref sym) if sym == "throw" => eval_throw(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "macroexpand" => {
                         if !rest_forms.is_empty() {
                             macroexpand(&rest_forms[0], loop_env)
@@ -393,6 +395,42 @@ fn eval_quasiquote_inner_default_case_cons(
     ])))
 }
 
+fn eval_try(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    match (forms.get(0), forms.get(1)) {
+        (Some(a0), Some(List(list_a1))) if list_a1.len() == 3 => {
+            match (list_a1[0].clone(), list_a1[1].clone()) {
+                (Symbol(catch), Symbol(catch_sym)) if catch == "catch*".to_string() => {
+                    match EVAL(a0.clone(), env.clone()) {
+                        result @ Ok(_) => result,
+                        Err(error) => {
+                            let catch_env = Env::simple_new(Some(env));
+                            catch_env.set(&catch_sym, MalExpression::String(error));
+                            EVAL(list_a1[2].clone(), Rc::new(catch_env))
+                        }
+                    }
+                }
+                _ => Err(format!(
+                    "invalid catch* clause: {}",
+                    printer::pr_str(&List(list_a1.clone()), true)
+                )),
+            }
+        }
+        _ => Err(format!(
+            "invalid try*/catch* form: {}",
+            printer::pr_str(forms.get(0).unwrap_or(&Nil()), true)
+        )),
+    }
+}
+
+fn eval_throw(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
+    match forms.get(0) {
+        Some(form) => {
+            Err(printer::pr_str(form, false))
+        },
+        None => Err("throw requires an argument".to_string())
+    }
+}
+
 fn apply_fnfunction(
     binds: Rc<Vec<MalExpression>>,
     fn_ast: Rc<MalExpression>,
@@ -427,7 +465,7 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
             let get = env.get(&symbol);
             match get {
                 Some(result) => Ok(result),
-                None => Err(format!("symbol {} not found in environment", symbol)),
+                None => Err(format!("'{}' not found", symbol)),
             }
         }
         List(list) => match iterate_rc_vec(list).map(|x| EVAL(x, env.clone())).collect() {

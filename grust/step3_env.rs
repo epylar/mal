@@ -48,7 +48,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                 }
                 Symbol(ref sym) if sym == "let*" => match (l.get(1), l.get(2)) {
                     (Some(List(l1)), Some(l2)) | (Some(Vector(l1)), Some(l2)) => {
-                        let newenv = Rc::new(Env::simple_new(Some(env))?);
+                        let newenv = Rc::new(Env::simple_new(Some(env)));
                         for chunk in l1.chunks(2) {
                             if let Symbol(l_sym) = &chunk[0] {
                                 let l_evaled_val = EVAL(&chunk[1], newenv.clone())?;
@@ -172,7 +172,7 @@ fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpre
 }
 
 fn init_env() -> Result<Env, String> {
-    let env = Env::simple_new(None)?;
+    let env = Env::simple_new(None);
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
