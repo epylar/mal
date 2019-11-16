@@ -1,6 +1,7 @@
 use crate::env::Env;
 use crate::printer::pr_str;
 use crate::reader::read_str;
+use crate::types;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
     Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco,
@@ -9,10 +10,9 @@ use crate::types::MalExpression::{
 use crate::types::MalRet;
 use itertools::Itertools;
 use std::cell::RefCell;
+use std::convert::TryInto;
 use std::rc::Rc;
 use std::{fs, iter};
-use crate::types;
-use std::convert::TryInto;
 
 impl MalExpression {
     fn is_nil(&self) -> bool {
@@ -36,10 +36,8 @@ impl MalExpression {
 
     pub fn first(&self) -> Option<&MalExpression> {
         match self {
-            List(l) => {
-                l.get(0)
-            },
-            _ => None
+            List(l) => l.get(0),
+            _ => None,
         }
     }
 
@@ -297,17 +295,18 @@ pub fn core_ns() -> Env {
                     Err("nth called with out of range index".to_string())
                 }
             }
-            _ => Err("nth requires two arguments: list/vector and integer index into list/vector".to_string()),
+            _ => Err(
+                "nth requires two arguments: list/vector and integer index into list/vector"
+                    .to_string(),
+            ),
         }
     }
 
     fn first(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(List(l)) | Some(Vector(l)) => {
-                match l.get(0) {
-                    Some(x) => Ok(x.clone()),
-                    None => Ok(Nil())
-                }
+            Some(List(l)) | Some(Vector(l)) => match l.get(0) {
+                Some(x) => Ok(x.clone()),
+                None => Ok(Nil()),
             },
             Some(Nil()) => Ok(Nil()),
             _ => Err("first requires an argument".to_string()),
@@ -320,14 +319,12 @@ pub fn core_ns() -> Env {
                 if !l.is_empty() {
                     Ok(List(Rc::new(l[1..].to_vec())))
                 } else {
-                    Ok(List(Rc::new(vec!())))
+                    Ok(List(Rc::new(vec![])))
                 }
-            },
-            Some(Nil()) => {
-                Ok(List(Rc::new(vec!())))
             }
+            Some(Nil()) => Ok(List(Rc::new(vec![]))),
             Some(_) => Err("invalid argument to rest: must be a non-empty list/vector".to_string()),
-            _ => Err("rest requires an argument".to_string()),
+            None => Err("rest requires an argument".to_string()),
         }
     }
 

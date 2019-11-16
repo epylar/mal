@@ -201,7 +201,7 @@ fn handle_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             binds: f0_v.clone(),
             ast: Rc::new(f1.clone()),
             outer_env: env,
-            is_macro: false
+            is_macro: false,
         }),
         _ => Err(
             "fn* expression must have at least two arguments; first must be list or vector"
