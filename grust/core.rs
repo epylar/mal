@@ -324,7 +324,7 @@ pub fn core_ns() -> Env {
                 }
             },
             Some(Nil()) => {
-                Ok(Nil())
+                Ok(List(Rc::new(vec!())))
             }
             Some(x) => Err("invalid argument to rest: must be a non-empty list/vector".to_string()),
             _ => Err("rest requires an argument".to_string()),
