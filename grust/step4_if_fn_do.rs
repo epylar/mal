@@ -48,7 +48,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                     binds,
                     ast,
                     outer_env,
-                    is_macro: _
+                    ..
                 } => {
                     let rest_evaled = eval_ast(&List(Rc::new((&forms[1..]).to_vec())), env)?;
                     match rest_evaled {

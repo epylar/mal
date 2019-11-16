@@ -216,7 +216,7 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
         (Some(Symbol(f0)), Some(f1)) => {
             let key = f0;
             let value = EVAL(f1.clone(), env.clone())?;
-            if let FnFunction { binds, ast, outer_env, is_macro: _ } = value {
+            if let FnFunction { binds, ast, outer_env, .. } = value {
                 let macro_fn = FnFunction { binds, ast, outer_env, is_macro: true };
                 env.set(key, macro_fn.clone());
                 Ok(macro_fn)
@@ -240,7 +240,7 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<Result<MalExpre
                         Some(inner_ast) => match inner_ast {
                             FnFunction { binds, ast: fn_ast, outer_env, is_macro: true, .. } => {
                                 match apply_fnfunction(binds, fn_ast, outer_env, l[1..].to_vec(), env.clone()) {
-                                    Ok(a) => match EVAL(a, env.clone()) {
+                                    Ok(a) => match EVAL(a, env) {
                                         Ok(x) => {
                                             Some(Ok(x))
                                         },
@@ -399,7 +399,7 @@ fn apply_fnfunction(binds: Rc<Vec<MalExpression>>,
                 })
                 .collect();
             let fn_env = Env::new(
-                Some(outer_env.clone()),
+                Some(outer_env),
                 Rc::new(binds_vec_string),
                 f_args_vec,
             )?;

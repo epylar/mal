@@ -73,7 +73,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         binds,
                         ast: fn_ast,
                         outer_env,
-                        is_macro: _
+                        ..
                     } => {
                         let f_args = eval_ast(&List(Rc::new(rest_forms.to_vec())), loop_env)?;
                         match f_args {
