@@ -1,7 +1,7 @@
 use crate::env::Env;
 use crate::printer::pr_str;
 use crate::reader::read_str;
-use crate::types;
+use crate::{types, printer};
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
     Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco,
@@ -328,6 +328,16 @@ pub fn core_ns() -> Env {
         }
     }
 
+    fn throw(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(form) => {
+                Err(printer::pr_str(form, false))
+            },
+            None => Err("throw requires an argument".to_string())
+        }
+    }
+
+
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
     env.set("*", RustFunction(times));
@@ -356,6 +366,7 @@ pub fn core_ns() -> Env {
     env.set("nth", RustFunction(nth));
     env.set("first", RustFunction(first));
     env.set("rest", RustFunction(rest));
+    env.set("throw", RustFunction(throw));
 
     env
 }

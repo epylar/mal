@@ -73,7 +73,6 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         eval_quasiquote(rest_forms.to_vec(), loop_env)
                     }
                     Symbol(ref sym) if sym == "try*" => eval_try(rest_forms.to_vec(), loop_env),
-                    Symbol(ref sym) if sym == "throw" => eval_throw(rest_forms.to_vec(), loop_env),
                     Symbol(ref sym) if sym == "macroexpand" => {
                         if !rest_forms.is_empty() {
                             macroexpand(&rest_forms[0], loop_env)
@@ -422,15 +421,6 @@ fn eval_try(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn eval_throw(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
-    match forms.get(0) {
-        Some(form) => {
-            Err(printer::pr_str(form, false))
-        },
-        None => Err("throw requires an argument".to_string())
-    }
-}
-
 fn apply_fnfunction(
     binds: Rc<Vec<MalExpression>>,
     fn_ast: Rc<MalExpression>,
@@ -522,7 +512,9 @@ fn main() {
 
     // functions defined in MAL
     match rep(
-        r#"(do (def! not (fn* (a) (if a false true))) (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)"))))) (defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons 'cond (rest (rest xs))))))))"#,
+        r#"(do (def! not (fn* (a) (if a false true)))
+                    (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))
+                    (defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons 'cond (rest (rest xs))))))))"#,
         env.clone(),
     ) {
         Ok(_) => {}
