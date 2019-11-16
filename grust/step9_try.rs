@@ -238,7 +238,7 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<Result<MalExpression, String>> {
+fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
     debug!("macroexpand_once: {}", printer::pr_str(&ast, true));
     match ast {
         List(l) => match l.get(0) {
@@ -278,7 +278,7 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<Result<MalExpre
     }
 }
 
-fn macroexpand(ast: &MalExpression, env: Rc<Env>) -> Result<MalExpression, String> {
+fn macroexpand(ast: &MalExpression, env: Rc<Env>) -> MalRet {
     let mut ast = ast.clone();
     loop {
         match macroexpand_once(&ast, env.clone()) {
@@ -437,7 +437,7 @@ fn apply_fnfunction(
     outer_env: Rc<Env>,
     rest_forms: Vec<MalExpression>,
     current_env: Rc<Env>,
-) -> Result<MalExpression, String> {
+) -> MalRet {
     let f_args = eval_ast(&List(Rc::new(rest_forms.to_vec())), current_env)?;
     match f_args {
         List(f_args_vec) => {
