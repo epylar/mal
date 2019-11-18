@@ -103,6 +103,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         ast: fn_ast,
                         outer_env,
                         is_macro: false,
+                        closure: _,
                     } => apply_fnfunction(binds, fn_ast, outer_env, rest_forms, loop_env),
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
                         Ok(List(ref x)) if x.is_empty() => {
@@ -225,6 +226,7 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                     ast,
                     outer_env,
                     is_macro: true,
+                    closure: None,
                 };
                 env.set(key, macro_fn.clone());
                 Ok(macro_fn)
@@ -319,6 +321,7 @@ fn eval_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             ast: Rc::new(f1.clone()),
             outer_env: env,
             is_macro: false,
+            closure: None,
         }),
         _ => Err(
             "fn* expression must have at least two arguments; first must be list or vector"

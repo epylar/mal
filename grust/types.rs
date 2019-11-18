@@ -17,6 +17,7 @@ pub enum MalExpression {
         ast: Rc<MalExpression>,
         outer_env: Rc<Env>,
         is_macro: bool,
+        closure: Option<fn(MalExpression, MalExpression) -> MalRet>, // fn itself and evaled args
     },
     Atom(Rc<RefCell<MalExpression>>),
     Tco(Box<MalExpression>, Rc<Env>), // for tail call optimization; loop again in EVAL

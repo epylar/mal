@@ -1,17 +1,18 @@
 use crate::env::Env;
 use crate::printer::pr_str;
 use crate::reader::read_str;
-use crate::{types, printer};
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
     Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco,
     Vector,
 };
 use crate::types::MalRet;
+use crate::{printer, types};
 use itertools::Itertools;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
+use std::slice::Iter;
 use std::{fs, iter};
 
 impl MalExpression {
@@ -330,13 +331,71 @@ pub fn core_ns() -> Env {
 
     fn throw(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(form) => {
-                Err(printer::pr_str(form, false))
-            },
-            None => Err("throw requires an argument".to_string())
+            Some(form) => Err(printer::pr_str(form, false)),
+            None => Err("throw requires an argument".to_string()),
         }
     }
 
+    fn collect_apply_eval_args(args: Vec<MalExpression>) -> Result<Vec<MalExpression>, String> {
+        match args.get(args.len() - 1) {
+            Some(List(x)) | Some(Vector(x)) => {
+                let iter_a = args[1..(args.len() - 1)].iter();
+                let iter_b = x.iter();
+                let result: Vec<MalExpression> = iter_a.chain(iter_b).cloned().collect();
+                Ok(result)
+            }
+            _ => Err("apply/eval functions require last argument to be a list".to_string()),
+        }
+    }
+
+    fn apply(args: Vec<MalExpression>) -> MalRet {
+        let apply_args_vec = match collect_apply_eval_args(args.clone()) {
+            Ok(x) => x,
+            Err(y) => return Err(y),
+        };
+        match args.get(0) {
+            Some(func) => match func.clone() {
+                FnFunction { closure, .. } => match closure {
+                    Some(closure) => closure(func.clone(), List(Rc::new(apply_args_vec))),
+                    None => panic!("Apply called with unimplemented FnFunction closure"),
+                },
+                RustFunction(x) => x(apply_args_vec),
+                _ => Err("cannot apply with non-function".to_string()),
+            },
+            None => Err("apply requires arguments".to_string()),
+        }
+    }
+
+    fn map(args: Vec<MalExpression>) -> MalRet {
+        let map_args_vec = match collect_apply_eval_args(args.clone()) {
+            Ok(x) => x,
+            Err(y) => return Err(y),
+        };
+        let args_iter: Iter<MalExpression> = map_args_vec.iter();
+        match args.get(0) {
+            Some(func) => match func.clone() {
+                FnFunction { closure, .. } => match closure {
+                    Some(actual_closure) => {
+                        let mut result_vec: Vec<MalExpression> = vec![];
+                        for x in args_iter {
+                            result_vec.push(actual_closure(func.clone(), x.clone())?)
+                        }
+                        Ok(List(Rc::new(result_vec)))
+                    }
+                    None => panic!("Apply called with unimplemented FnFunction closure"),
+                },
+                RustFunction(func) => {
+                    let mut result_vec: Vec<MalExpression> = vec![];
+                    for x in args_iter {
+                        result_vec.push(func(vec![x.clone()])?)
+                    }
+                    Ok(List(Rc::new(result_vec)))
+                }
+                _ => Err("cannot apply with non-function".to_string()),
+            },
+            None => Err("apply requires arguments".to_string()),
+        }
+    }
 
     env.set("+", RustFunction(plus));
     env.set("-", RustFunction(minus));
@@ -367,6 +426,8 @@ pub fn core_ns() -> Env {
     env.set("first", RustFunction(first));
     env.set("rest", RustFunction(rest));
     env.set("throw", RustFunction(throw));
+    env.set("apply", RustFunction(apply));
+    env.set("map", RustFunction(map));
 
     env
 }

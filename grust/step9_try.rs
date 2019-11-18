@@ -23,6 +23,7 @@ use types::MalExpression::{
     Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco, Vector,
 };
 use types::MalRet;
+use tracing::instrument;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -31,6 +32,7 @@ fn READ(input: &str) -> MalRet {
 }
 
 #[allow(non_snake_case)]
+#[instrument]
 fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
     if log_enabled!(Level::Debug) {
         let ast_str = pr_str(&ast, true);
@@ -99,12 +101,12 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         }
                         None => return Err("argument required".to_string()),
                     },
-                    FnFunction {
-                        binds,
-                        ast: fn_ast,
-                        outer_env,
-                        is_macro: false,
-                    } => apply_fnfunction(binds, fn_ast, outer_env, rest_forms, loop_env),
+                    func @ FnFunction {
+                        is_macro: false, ..
+                    } => apply_fnfunction(
+                        func.clone(),
+                        eval_ast(&List(Rc::new(rest_forms)), loop_env)?.clone(),
+                    ),
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
                         Ok(List(ref x)) if x.is_empty() => {
                             Err("Cannot apply empty list as function".to_string())
@@ -226,6 +228,7 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
                     ast,
                     outer_env,
                     is_macro: true,
+                    closure: None,
                 };
                 env.set(key, macro_fn.clone());
                 Ok(macro_fn)
@@ -245,19 +248,13 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
                 let target = env.get(s);
                 match target {
                     Some(inner_ast) => match inner_ast {
-                        FnFunction {
-                            binds,
-                            ast: fn_ast,
-                            outer_env,
-                            is_macro: true,
-                            ..
-                        } => {
+                        func @ FnFunction { is_macro: true, .. } => {
                             match apply_fnfunction(
-                                binds,
-                                fn_ast,
-                                outer_env,
-                                l[1..].to_vec(),
-                                env.clone(),
+                                func,
+                                match eval_ast(&List(Rc::new(l[1..].to_vec())), env.clone()) {
+                                    Ok(x) => x,
+                                    Err(x) => return Some(Err(x)),
+                                },
                             ) {
                                 Ok(a) => match EVAL(a, env) {
                                     Ok(x) => Some(Ok(x)),
@@ -320,6 +317,7 @@ fn eval_fn(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
             ast: Rc::new(f1.clone()),
             outer_env: env,
             is_macro: false,
+            closure: Some(apply_fnfunction),
         }),
         _ => Err(
             "fn* expression must have at least two arguments; first must be list or vector"
@@ -398,7 +396,7 @@ fn eval_try(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     match (forms.get(0), forms.get(1)) {
         (Some(a0), Some(List(list_a1))) if list_a1.len() == 3 => {
             match (list_a1[0].clone(), list_a1[1].clone()) {
-                (Symbol(catch), Symbol(catch_sym)) if catch == "catch*".to_string() => {
+                (Symbol(ref catch), Symbol(ref catch_sym)) if catch.eq("catch*") => {
                     match EVAL(a0.clone(), env.clone()) {
                         result @ Ok(_) => result,
                         Err(error) => {
@@ -421,16 +419,17 @@ fn eval_try(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn apply_fnfunction(
-    binds: Rc<Vec<MalExpression>>,
-    fn_ast: Rc<MalExpression>,
-    outer_env: Rc<Env>,
-    rest_forms: Vec<MalExpression>,
-    current_env: Rc<Env>,
-) -> MalRet {
-    let f_args = eval_ast(&List(Rc::new(rest_forms.to_vec())), current_env)?;
-    match f_args {
-        List(f_args_vec) => {
+fn apply_fnfunction(function: MalExpression, rest_forms: MalExpression) -> MalRet {
+    match (function.clone(), rest_forms.clone()) {
+        (
+            FnFunction {
+                binds,
+                ast: fn_ast,
+                outer_env,
+                ..
+            },
+            List(rest_forms_vec),
+        ) => {
             let binds_vec_string: Vec<String> = binds
                 .iter()
                 .map(|x| match x {
@@ -438,10 +437,13 @@ fn apply_fnfunction(
                     _ => panic!("non-symbol {} in FnFunction binds", pr_str(x, true)),
                 })
                 .collect();
-            let fn_env = Env::new(Some(outer_env), Rc::new(binds_vec_string), f_args_vec)?;
+            let fn_env = Env::new(Some(outer_env), Rc::new(binds_vec_string), rest_forms_vec)?;
             Ok(Tco(Box::new((*fn_ast).clone()), Rc::new(fn_env)))
         }
-        _ => panic!("eval_ast(List) => non-List"),
+        (_, _) => panic!(
+            "apply_fnfunction called with invalid arguments {:?} {:?}",
+            function, rest_forms
+        ),
     }
 }
 
@@ -572,8 +574,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_do() {
+    fn test_apply() {
         let env = Rc::new(core::core_ns());
-        assert_eq!(rep("(do (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc))))) (sum2 50 0))", env), Ok("1275".to_string()));
+        assert_eq!(rep("(apply + '(1 2))", env), Ok("3".to_string()));
+    }
+
+    #[test]
+    fn test_eval() {
+        let env = Rc::new(core::core_ns());
+        assert_eq!(
+            rep(
+                "(do (def! nums (list 1 2 3)) (def! double (fn* (a) (* 2 a))) (map double nums))",
+                env
+            ),
+            Ok("3".to_string())
+        );
     }
 }

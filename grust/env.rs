@@ -14,7 +14,7 @@ impl Env {
     pub fn simple_new(outer: Option<Rc<Env>>) -> Env {
         match Env::new(outer, Rc::new(vec![]), Rc::new(vec![])) {
             Ok(result) => result,
-            Err(_) => panic!("Err should be impossible in Env::simple_new")
+            Err(_) => panic!("Err should be impossible in Env::simple_new"),
         }
     }
 

@@ -62,9 +62,7 @@ fn EVAL(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                         }
                         EVAL(l2, newenv)
                     }
-                    _ => {
-                        Err("let* needs 2 arguments; first should be a list or vector".to_string())
-                    }
+                    _ => Err("let* needs 2 arguments; first should be a list or vector".to_string()),
                 },
                 Symbol(_) => match EVAL(l0, env.clone()) {
                     Ok(RustFunction(f)) => {
