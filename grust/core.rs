@@ -12,7 +12,6 @@ use itertools::Itertools;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
-use std::slice::Iter;
 use std::{fs, iter};
 
 impl MalExpression {
@@ -356,13 +355,49 @@ pub fn core_ns() -> Env {
         match args.get(0) {
             Some(func) => match func.clone() {
                 FnFunction { closure, .. } => match closure {
-                    Some(closure) => closure(func.clone(), List(Rc::new(apply_args_vec))),
+                    Some(closure) => closure(func.clone(), List(Rc::new(apply_args_vec)), false),
                     None => panic!("Apply called with unimplemented FnFunction closure"),
                 },
                 RustFunction(x) => x(apply_args_vec),
                 _ => Err("cannot apply with non-function".to_string()),
             },
             None => Err("apply requires arguments".to_string()),
+        }
+    }
+
+    fn map(args: Vec<MalExpression>) -> MalRet {
+        let map_args_vec = match collect_apply_eval_args(args.clone()) {
+            Ok(x) => x,
+            Err(y) => return Err(y),
+        };
+        match args.get(0) {
+            Some(func) => match func.clone() {
+                FnFunction { closure, .. } => match closure {
+                    Some(closure) => {
+                        let result: Result<Vec<MalExpression>, String> = map_args_vec
+                            .into_iter()
+                            .map(|x| closure(func.clone(), List(Rc::new(vec![x.clone()])), false))
+                            .collect();
+                        match result {
+                            Ok(x) => Ok(List(Rc::new(x))),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    None => panic!("Map called with unimplemented FnFunction closure"),
+                },
+                RustFunction(rsfunc) => {
+                    let result: Result<Vec<MalExpression>, String> = map_args_vec
+                        .into_iter()
+                        .map(|x| rsfunc(vec![x.clone()]))
+                        .collect();
+                    match result {
+                        Ok(x) => Ok(List(Rc::new(x))),
+                        Err(e) => Err(e),
+                    }
+                }
+                _ => Err("cannot map with non-function".to_string()),
+            },
+            None => Err("map requires arguments".to_string()),
         }
     }
 

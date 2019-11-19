@@ -16,6 +16,7 @@ use reader::read_str;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::rc::Rc;
+use tracing::instrument;
 use types::iterate_rc_vec;
 use types::Closure;
 use types::MalExpression;
@@ -23,7 +24,6 @@ use types::MalExpression::{
     Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco, Vector,
 };
 use types::MalRet;
-use tracing::instrument;
 
 #[allow(non_snake_case)]
 fn READ(input: &str) -> MalRet {
@@ -111,6 +111,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     } => apply_fnfunction(
                         func.clone(),
                         eval_ast(&List(Rc::new(rest_forms)), loop_env)?.clone(),
+                        true
                     ),
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
                         Ok(List(ref x)) if x.is_empty() => {
@@ -280,6 +281,7 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
                                     Ok(x) => x,
                                     Err(x) => return Some(Err(x)),
                                 },
+                                false
                             ) {
                                 Ok(a) => match EVAL(a, env) {
                                     Ok(x) => Some(Ok(x)),
@@ -450,7 +452,7 @@ fn eval_try(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
     }
 }
 
-fn apply_fnfunction(function: MalExpression, rest_forms: MalExpression) -> MalRet {
+fn apply_fnfunction(function: MalExpression, rest_forms: MalExpression, tco: bool) -> MalRet {
     match (function.clone(), rest_forms.clone()) {
         (
             FnFunction {
@@ -469,7 +471,11 @@ fn apply_fnfunction(function: MalExpression, rest_forms: MalExpression) -> MalRe
                 })
                 .collect();
             let fn_env = Env::new(Some(outer_env), Rc::new(binds_vec_string), rest_forms_vec)?;
-            Ok(Tco(Box::new((*fn_ast).clone()), Rc::new(fn_env)))
+            if tco {
+                Ok(Tco(Box::new((*fn_ast).clone()), Rc::new(fn_env)))
+            } else {
+                EVAL((*fn_ast).clone(), Rc::new(fn_env))
+            }
         }
         (_, _) => panic!(
             "apply_fnfunction called with invalid arguments {:?} {:?}",
