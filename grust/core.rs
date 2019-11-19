@@ -405,7 +405,7 @@ pub fn core_ns() -> Env {
         match args.get(0) {
             Some(Symbol(_)) => Ok(Boolean(true)),
             Some(_) => Ok(Boolean(false)),
-            None => Err("symbol_q requires an argument".to_string()),
+            None => Err("symbol? requires an argument".to_string()),
         }
     }
 
@@ -413,7 +413,7 @@ pub fn core_ns() -> Env {
         match args.get(0) {
             Some(Nil()) => Ok(Boolean(true)),
             Some(_) => Ok(Boolean(false)),
-            None => Err("nil_q requires an argument".to_string()),
+            None => Err("nil? requires an argument".to_string()),
         }
     }
 
@@ -421,7 +421,7 @@ pub fn core_ns() -> Env {
         match args.get(0) {
             Some(Boolean(true)) => Ok(Boolean(true)),
             Some(_) => Ok(Boolean(false)),
-            None => Err("true_q requires an argument".to_string()),
+            None => Err("true? requires an argument".to_string()),
         }
     }
 
@@ -429,7 +429,33 @@ pub fn core_ns() -> Env {
         match args.get(0) {
             Some(Boolean(false)) => Ok(Boolean(true)),
             Some(_) => Ok(Boolean(false)),
-            None => Err("false_q requires an argument".to_string()),
+            None => Err("false? requires an argument".to_string()),
+        }
+    }
+
+    fn symbol(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
+                Ok(Symbol(s.clone()))
+            },
+            _ => Err("symbol requires a string argument".to_string())
+        }
+    }
+
+    fn keyword_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(MalExpression::String(s)) if s.starts_with("\u{29e}") => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("keyword? requires an argument".to_string()),
+        }
+    }
+
+    fn keyword(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
+                Ok(MalExpression::String(format!("{}{}", "\u{29e}", &s[1..]).to_string()))
+            },
+            _ => Err("symbol requires a string argument".to_string())
         }
     }
 
@@ -468,6 +494,9 @@ pub fn core_ns() -> Env {
     env.set("false?", RustFunction(false_q));
     env.set("apply", RustFunction(apply));
     env.set("map", RustFunction(map));
+    env.set("symbol", RustFunction(symbol));
+    env.set("keyword?", RustFunction(keyword_q));
+    env.set("keyword", RustFunction(keyword));
 
     env
 }
