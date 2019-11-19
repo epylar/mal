@@ -8,6 +8,7 @@ pub mod printer;
 pub mod reader;
 pub mod types;
 
+use crate::types::iterate_rc_vec;
 use printer::pr_str;
 use reader::read_str;
 use rustyline::error::ReadlineError;
@@ -121,11 +122,6 @@ fn mal_int_fn(args: Vec<MalExpression>, func: fn(i32, i32) -> i32, initial: i32)
         }
     }
     Ok(Int(result))
-}
-
-fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpression> {
-    let len = data.len();
-    (0..len).map(move |i| data[i].clone())
 }
 
 fn init_env() -> Env {

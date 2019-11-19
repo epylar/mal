@@ -94,14 +94,14 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                 None => Err(format!("symbol {} not found in environment", symbol)),
             }
         }
-        List(list) => match iterate_rc_vec(list)
+        List(list) => match types::iterate_rc_vec(list)
             .map(|x| EVAL(&x, env.clone()))
             .collect()
         {
             Ok(collected) => Ok(List(Rc::new(collected))),
             Err(e) => Err(e),
         },
-        Vector(vector) => match iterate_rc_vec(vector)
+        Vector(vector) => match types::iterate_rc_vec(vector)
             .map(|x| EVAL(&x, env.clone()))
             .collect()
         {
@@ -109,7 +109,7 @@ fn eval_ast(ast: &MalExpression, env: Rc<Env>) -> MalRet {
             Err(e) => Err(e),
         },
         HashTable(hash_table) => {
-            match iterate_rc_vec(hash_table)
+            match types::iterate_rc_vec(hash_table)
                 .map(|x| EVAL(&x, env.clone()))
                 .collect()
             {
@@ -162,11 +162,6 @@ fn mal_int_fn(args: Vec<MalExpression>, func: fn(i32, i32) -> i32, initial: i32)
         }
     }
     Ok(Int(result))
-}
-
-fn iterate_rc_vec(data: Rc<Vec<MalExpression>>) -> impl Iterator<Item = MalExpression> {
-    let len = data.len();
-    (0..len).map(move |i| data[i].clone())
 }
 
 fn init_env() -> Result<Env, String> {

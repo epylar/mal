@@ -34,9 +34,9 @@ fn READ(input: &str) -> MalRet {
 #[allow(non_snake_case)]
 #[instrument]
 fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
+    let original_ast = ast.clone();
     if log_enabled!(Level::Debug) {
-        let ast_str = pr_str(&ast, true);
-        debug!("EVAL: {}", ast_str);
+        debug!(">> EVAL: {}", pr_str(&ast, true));
     }
     let mut loop_env = env;
     let mut loop_count = 0;
@@ -56,6 +56,11 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
             }
             List(forms) => {
                 if forms.is_empty() {
+                    debug!(
+                        "<< EVAL {} returning: {}",
+                        pr_str(&original_ast, true),
+                        pr_str(&ast.clone(), true)
+                    );
                     return Ok(ast);
                 }
                 let form0 = forms[0].clone();
@@ -127,9 +132,21 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     Ok(Tco(exp, env)) => {
                         loop_env = env;
                         ast = *exp;
+                        debug!(
+                            "== EVAL {} looping with: {}",
+                            pr_str(&original_ast, true),
+                            pr_str(&ast.clone(), true)
+                        );
                         continue 'tco;
                     }
-                    x => return x,
+                    x => {
+                        debug!(
+                            "<< EVAL {} returning: {}",
+                            pr_str(&original_ast, true),
+                            pr_str(&x.clone().unwrap(), true)
+                        );
+                        return x;
+                    }
                 }
             }
             Symbol(_)
@@ -142,7 +159,16 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
             | Atom(_)
             | RustFunction(_)
             | RustClosure(_)
-            | Nil() => return eval_ast(&ast, loop_env),
+            | Nil() => {
+                let result = eval_ast(&ast, loop_env);
+                debug!(
+                    "<< EVAL {} returning: eval_ast({}) = {}",
+                    pr_str(&original_ast, true),
+                    pr_str(&ast.clone(), true),
+                    pr_str(&result.clone().unwrap(), true)
+                );
+                return result;
+            }
         }
     }
 }
@@ -241,7 +267,6 @@ fn eval_defmacro(forms: Vec<MalExpression>, env: Rc<Env>) -> MalRet {
 }
 
 fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
-    debug!("macroexpand_once: {}", printer::pr_str(&ast, true));
     match ast {
         List(l) => match l.get(0) {
             Some(Symbol(s)) => {
@@ -282,8 +307,14 @@ fn macroexpand(ast: &MalExpression, env: Rc<Env>) -> MalRet {
                 ast = x;
                 continue;
             }
-            Some(y) => return y,
-            None => return Ok(ast),
+            Some(y) => {
+                trace!("macroexpand({:?}) = {:?}", ast, y);
+                return y;
+            }
+            None => {
+                trace!("macroexpand({:?}) = {:?}", ast, ast);
+                return Ok(ast);
+            }
         }
     }
 }

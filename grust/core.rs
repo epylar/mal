@@ -366,34 +366,35 @@ pub fn core_ns() -> Env {
         }
     }
 
-    fn map(args: Vec<MalExpression>) -> MalRet {
-        let map_args_vec = match collect_apply_eval_args(args.clone()) {
-            Ok(x) => x,
-            Err(y) => return Err(y),
-        };
-        let args_iter: Iter<MalExpression> = map_args_vec.iter();
+    fn symbol_q(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(func) => match func.clone() {
-                FnFunction { closure, .. } => match closure {
-                    Some(actual_closure) => {
-                        let mut result_vec: Vec<MalExpression> = vec![];
-                        for x in args_iter {
-                            result_vec.push(actual_closure(func.clone(), x.clone())?)
-                        }
-                        Ok(List(Rc::new(result_vec)))
-                    }
-                    None => panic!("Apply called with unimplemented FnFunction closure"),
-                },
-                RustFunction(func) => {
-                    let mut result_vec: Vec<MalExpression> = vec![];
-                    for x in args_iter {
-                        result_vec.push(func(vec![x.clone()])?)
-                    }
-                    Ok(List(Rc::new(result_vec)))
-                }
-                _ => Err("cannot apply with non-function".to_string()),
-            },
-            None => Err("apply requires arguments".to_string()),
+            Some(Symbol(_)) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("symbol_q requires an argument".to_string()),
+        }
+    }
+
+    fn nil_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Nil()) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("nil_q requires an argument".to_string()),
+        }
+    }
+
+    fn true_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Boolean(true)) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("true_q requires an argument".to_string()),
+        }
+    }
+
+    fn false_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Boolean(false)) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("false_q requires an argument".to_string()),
         }
     }
 
@@ -426,6 +427,10 @@ pub fn core_ns() -> Env {
     env.set("first", RustFunction(first));
     env.set("rest", RustFunction(rest));
     env.set("throw", RustFunction(throw));
+    env.set("symbol?", RustFunction(symbol_q));
+    env.set("nil?", RustFunction(nil_q));
+    env.set("true?", RustFunction(true_q));
+    env.set("false?", RustFunction(false_q));
     env.set("apply", RustFunction(apply));
     env.set("map", RustFunction(map));
 
