@@ -307,10 +307,8 @@ pub fn core_ns() -> Env {
                     None => panic!("Map called with unimplemented FnFunction closure"),
                 },
                 RustFunction(rsfunc) => {
-                    let result: Result<Vec<MalExpression>, String> = map_args_vec
-                        .into_iter()
-                        .map(|x| rsfunc(vec![x]))
-                        .collect();
+                    let result: Result<Vec<MalExpression>, String> =
+                        map_args_vec.into_iter().map(|x| rsfunc(vec![x])).collect();
                     match result {
                         Ok(x) => Ok(List(Rc::new(x))),
                         Err(e) => Err(e),
@@ -371,9 +369,9 @@ pub fn core_ns() -> Env {
 
     fn keyword(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => Ok(
-                MalExpression::String(format!("{}{}", "\u{29e}", &s[1..])),
-            ),
+            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
+                Ok(MalExpression::String(format!("{}{}", "\u{29e}", &s[1..])))
+            }
             _ => Err("symbol requires a string argument".to_string()),
         }
     }

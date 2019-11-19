@@ -122,4 +122,16 @@ impl MalExpression {
             RustClosure(_) => false,
         }
     }
+
+    pub fn to_vec(&self) -> Option<Vec<MalExpression>> {
+        match self {
+            Vector(v) => Some(v.to_vec()),
+            List(v) => Some(v.to_vec()),
+            _ => None,
+        }
+    }
+}
+
+pub fn list_from_vec(vec: Vec<MalExpression>) -> MalExpression {
+    List(Rc::new(vec))
 }

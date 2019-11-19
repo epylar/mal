@@ -18,6 +18,7 @@ use rustyline::Editor;
 use std::rc::Rc;
 use tracing::instrument;
 use types::iterate_rc_vec;
+use types::list_from_vec;
 use types::Closure;
 use types::MalExpression;
 use types::MalExpression::{
@@ -110,7 +111,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                         is_macro: false, ..
                     } => apply_fnfunction(
                         func.clone(),
-                        eval_ast(&List(Rc::new(rest_forms)), loop_env)?.clone(),
+                        eval_ast(&list_from_vec(rest_forms), loop_env)?.clone(),
                         true,
                     ),
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
@@ -274,22 +275,11 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
                 let target = env.get(s);
                 match target {
                     Some(inner_ast) => match inner_ast {
-                        func @ FnFunction { is_macro: true, .. } => {
-                            match apply_fnfunction(
-                                func,
-                                match eval_ast(&List(Rc::new(l[1..].to_vec())), env.clone()) {
-                                    Ok(x) => x,
-                                    Err(x) => return Some(Err(x)),
-                                },
-                                false,
-                            ) {
-                                Ok(a) => match EVAL(a, env) {
-                                    Ok(x) => Some(Ok(x)),
-                                    y => Some(y),
-                                },
-                                z => Some(z),
-                            }
-                        }
+                        func @ FnFunction { is_macro: true, .. } => Some(apply_fnfunction(
+                            func,
+                            list_from_vec(l[1..].to_vec()),
+                            false,
+                        )),
                         _ => None,
                     },
                     _ => None,
