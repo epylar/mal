@@ -3,8 +3,7 @@ use crate::printer::pr_str;
 use crate::reader::read_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustClosure, RustFunction, Symbol, Tco,
-    Vector,
+    Atom, Boolean, FnFunction, Int, List, Nil, RustFunction, Symbol, Vector,
 };
 use crate::types::MalRet;
 use crate::{printer, types};
@@ -13,84 +12,6 @@ use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
 use std::{fs, iter};
-
-impl MalExpression {
-    fn is_nil(&self) -> bool {
-        if let MalExpression::Nil() = self {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_false(&self) -> bool {
-        match self {
-            MalExpression::Boolean(x) if x == &false => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_true_in_if(&self) -> bool {
-        !(self.is_nil() || self.is_false())
-    }
-
-    pub fn first(&self) -> Option<&MalExpression> {
-        match self {
-            List(l) => l.get(0),
-            _ => None,
-        }
-    }
-
-    fn equals(&self, other: &MalExpression) -> bool {
-        fn compare_vecs(a: &Rc<Vec<MalExpression>>, b: &Rc<Vec<MalExpression>>) -> bool {
-            if a.len() != b.len() {
-                return false;
-            }
-            for i in 0..(a.len()) {
-                if !&a[i].equals(&b[i]) {
-                    return false;
-                }
-            }
-            true
-        }
-
-        match self {
-            Symbol(x) => match other {
-                Symbol(y) => x == y,
-                _ => false,
-            },
-            Int(x) => match other {
-                Int(y) => x == y,
-                _ => false,
-            },
-            MalExpression::String(x) => match other {
-                MalExpression::String(y) => x == y,
-                _ => false,
-            },
-            Boolean(x) => match other {
-                Boolean(y) => x == y,
-                _ => false,
-            },
-            List(x) | Vector(x) => match other {
-                List(y) | Vector(y) => compare_vecs(x, y),
-                _ => false,
-            },
-            HashTable(x) => match other {
-                HashTable(y) => compare_vecs(x, y),
-                _ => false,
-            },
-            Nil() => match other {
-                Nil() => true,
-                _ => false,
-            },
-            FnFunction { .. } => false,
-            Atom(_) => false,
-            Tco(_, _) => false,
-            RustFunction(_) => false,
-            RustClosure(_) => false,
-        }
-    }
-}
 
 pub fn core_ns() -> Env {
     fn plus(args: Vec<MalExpression>) -> MalRet {
@@ -336,7 +257,7 @@ pub fn core_ns() -> Env {
     }
 
     fn collect_apply_eval_args(args: Vec<MalExpression>) -> Result<Vec<MalExpression>, String> {
-        match args.get(args.len() - 1) {
+        match args.last() {
             Some(List(x)) | Some(Vector(x)) => {
                 let iter_a = args[1..(args.len() - 1)].iter();
                 let iter_b = x.iter();
@@ -376,7 +297,7 @@ pub fn core_ns() -> Env {
                     Some(closure) => {
                         let result: Result<Vec<MalExpression>, String> = map_args_vec
                             .into_iter()
-                            .map(|x| closure(func.clone(), List(Rc::new(vec![x.clone()])), false))
+                            .map(|x| closure(func.clone(), List(Rc::new(vec![x])), false))
                             .collect();
                         match result {
                             Ok(x) => Ok(List(Rc::new(x))),
@@ -388,7 +309,7 @@ pub fn core_ns() -> Env {
                 RustFunction(rsfunc) => {
                     let result: Result<Vec<MalExpression>, String> = map_args_vec
                         .into_iter()
-                        .map(|x| rsfunc(vec![x.clone()]))
+                        .map(|x| rsfunc(vec![x]))
                         .collect();
                     match result {
                         Ok(x) => Ok(List(Rc::new(x))),
@@ -435,10 +356,8 @@ pub fn core_ns() -> Env {
 
     fn symbol(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
-                Ok(Symbol(s.clone()))
-            },
-            _ => Err("symbol requires a string argument".to_string())
+            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => Ok(Symbol(s.clone())),
+            _ => Err("symbol requires a string argument".to_string()),
         }
     }
 
@@ -452,10 +371,10 @@ pub fn core_ns() -> Env {
 
     fn keyword(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
-            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
-                Ok(MalExpression::String(format!("{}{}", "\u{29e}", &s[1..]).to_string()))
-            },
-            _ => Err("symbol requires a string argument".to_string())
+            Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => Ok(
+                MalExpression::String(format!("{}{}", "\u{29e}", &s[1..])),
+            ),
+            _ => Err("symbol requires a string argument".to_string()),
         }
     }
 

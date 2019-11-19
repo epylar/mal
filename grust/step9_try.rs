@@ -111,7 +111,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                     } => apply_fnfunction(
                         func.clone(),
                         eval_ast(&List(Rc::new(rest_forms)), loop_env)?.clone(),
-                        true
+                        true,
                     ),
                     Symbol(_) | List(_) => match EVAL(form0, loop_env.clone()) {
                         Ok(List(ref x)) if x.is_empty() => {
@@ -165,7 +165,7 @@ fn EVAL(mut ast: MalExpression, env: Rc<Env>) -> MalRet {
                 debug!(
                     "<< EVAL {} returning: eval_ast({}) = {}",
                     pr_str(&original_ast, true),
-                    pr_str(&ast.clone(), true),
+                    pr_str(&ast, true),
                     pr_str(&result.clone().unwrap(), true)
                 );
                 return result;
@@ -281,7 +281,7 @@ fn macroexpand_once(ast: &MalExpression, env: Rc<Env>) -> Option<MalRet> {
                                     Ok(x) => x,
                                     Err(x) => return Some(Err(x)),
                                 },
-                                false
+                                false,
                             ) {
                                 Ok(a) => match EVAL(a, env) {
                                     Ok(x) => Some(Ok(x)),
