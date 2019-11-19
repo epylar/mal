@@ -3,7 +3,7 @@ use crate::printer::pr_str;
 use crate::reader::read_str;
 use crate::types::MalExpression;
 use crate::types::MalExpression::{
-    Atom, Boolean, FnFunction, Int, List, Nil, RustFunction, Symbol, Vector,
+    Atom, Boolean, FnFunction, HashTable, Int, List, Nil, RustFunction, Symbol, Vector,
 };
 use crate::types::MalRet;
 use crate::{printer, types};
@@ -370,10 +370,42 @@ pub fn core_ns() -> Env {
     fn keyword(args: Vec<MalExpression>) -> MalRet {
         match args.get(0) {
             Some(MalExpression::String(s)) if !s.starts_with("\u{29e}") => {
-                Ok(MalExpression::String(format!("{}{}", "\u{29e}", &s[1..])))
+                Ok(MalExpression::String(format!("{}{}", "\u{29e}", &s)))
             }
             _ => Err("symbol requires a string argument".to_string()),
         }
+    }
+
+    fn sequential_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Vector(_)) | Some(List(_)) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("sequential? requires an argument".to_string()),
+        }
+    }
+
+    fn vector_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(Vector(_)) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("vector? requires an argument".to_string()),
+        }
+    }
+
+    fn vector(args: Vec<MalExpression>) -> MalRet {
+        Ok(MalExpression::Vector(Rc::new(args)))
+    }
+
+    fn map_q(args: Vec<MalExpression>) -> MalRet {
+        match args.get(0) {
+            Some(HashTable { .. }) => Ok(Boolean(true)),
+            Some(_) => Ok(Boolean(false)),
+            None => Err("map? requires an argument".to_string()),
+        }
+    }
+
+    fn hash_map(args: Vec<MalExpression>) -> MalRet {
+        Ok(MalExpression::HashTable(Rc::new(args)))
     }
 
     env.set("+", RustFunction(plus));
@@ -414,6 +446,11 @@ pub fn core_ns() -> Env {
     env.set("symbol", RustFunction(symbol));
     env.set("keyword?", RustFunction(keyword_q));
     env.set("keyword", RustFunction(keyword));
+    env.set("sequential?", RustFunction(sequential_q));
+    env.set("vector?", RustFunction(vector_q));
+    env.set("vector", RustFunction(vector));
+    env.set("map?", RustFunction(map_q));
+    env.set("hash-map", RustFunction(hash_map));
 
     env
 }
